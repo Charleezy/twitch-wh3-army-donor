@@ -72,19 +72,28 @@ end
 
 function da.spawn_pending(faction)
 	local handled = saved_set(HANDLED)
+	-- persist per entry so a later error cannot cause a duplicate spawn next turn
+	local function mark_handled(id)
+		handled[id] = true
+		cm:set_saved_value(HANDLED, handled)
+	end
 	for _, entry in ipairs(read_entries()) do
 		if not handled[entry.id] then
 			local tier = pick_tier(entry)
 			if not tier then
-				handled[entry.id] = true
-			elseif donation_army_spawn.spawn(entry, tier, faction, donation_army_config.spawn_distance) then
-				handled[entry.id] = true
+				mark_handled(entry.id)
 			else
-				da.log("no valid spawn location for " .. entry.id .. "; retrying next turn")
+				local ok, spawned = pcall(donation_army_spawn.spawn, entry, tier, faction, donation_army_config.spawn_distance)
+				if not ok then
+					da.log("spawn failed for " .. entry.id .. ": " .. tostring(spawned))
+				elseif spawned then
+					mark_handled(entry.id)
+				else
+					da.log("no valid spawn location for " .. entry.id .. "; retrying next turn")
+				end
 			end
 		end
 	end
-	cm:set_saved_value(HANDLED, handled)
 end
 
 function da.install()

@@ -76,3 +76,25 @@ def test_poll_errors_are_logged_not_raised(game):
     game.run("donation_army_queue.read = function() error('boom') end")
     game.poll()
     assert any("boom" in line for line in game.log)
+
+
+def test_throwing_spawn_is_retried_without_losing_others(game):
+    setup(game)
+    game.first_tick()
+    game.queue("a1\tBob\t5.00", "b2\tAlice\t5.00")
+    game.run('''
+        local real = donation_army_spawn.spawn
+        fail_a1 = true
+        donation_army_spawn.spawn = function(entry, ...)
+            if entry.id == "a1" and fail_a1 then error("boom spawn") end
+            return real(entry, ...)
+        end
+    ''')
+    game.player_turn_start()
+    assert game.eval("#fake.spawns") == 1
+    assert any("spawn failed for a1" in line and "boom spawn" in line for line in game.log)
+    assert game.eval('fake.saved.donation_army_handled["a1"]') is None
+    assert game.eval('fake.saved.donation_army_handled["b2"]') is True
+    game.run("fail_a1 = false")
+    game.player_turn_start()
+    assert game.eval("#fake.spawns") == 2

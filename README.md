@@ -4,7 +4,7 @@ A Total War: WARHAMMER III campaign mod plus a small companion app. When a viewe
 
 ## Install the mod
 
-1. Run `build.ps1` from the repo root (needs `rpfm_cli.exe` at `C:\dev\gamingpfmpfm_cli.exe`; edit the path at the top of `build.ps1` if yours differs). It builds `dist\donation_army.pack` and installs it.
+1. Run `build.ps1` from the repo root (needs `rpfm_cli.exe` at `C:\dev\gaming\rpfm\rpfm_cli.exe`; edit the path at the top of `build.ps1` if yours differs). It builds `dist\donation_army.pack` and installs it.
 2. Enable `donation_army.pack` in the Total War launcher's mod list.
 
 ## Mod config

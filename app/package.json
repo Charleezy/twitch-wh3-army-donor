@@ -1,0 +1,13 @@
+{
+  "name": "donation-army-bridge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "fake": "node src/fake.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "socket.io-client": "^2.5.0"
+  }
+}

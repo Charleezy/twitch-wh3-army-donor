@@ -4,7 +4,7 @@ A Total War: WARHAMMER III campaign mod plus a small companion app. When a viewe
 
 ## Install the mod
 
-1. Run `build.ps1` from the repo root. It builds `dist\donation_army.pack` and installs it.
+1. Run `build.ps1` from the repo root (needs `rpfm_cli.exe` at `C:\dev\gamingpfmpfm_cli.exe`; edit the path at the top of `build.ps1` if yours differs). It builds `dist\donation_army.pack` and installs it.
 2. Enable `donation_army.pack` in the Total War launcher's mod list.
 
 ## Mod config
@@ -42,7 +42,7 @@ App config keys (`app/config.local.json`):
 | `socketToken` | Your Streamlabs socket API token. Never logged. |
 | `queuePath` | Full path to the queue file; must be in the WH3 install folder (where `Warhammer3.exe` is). In JSON, Windows paths need doubled backslashes (`C:\\Games\\...`) or forward slashes. |
 | `currencyRates` | Map of currency code to USD rate, used to convert non-USD donations. Unknown currencies are treated as USD. |
-| `acceptTestAlerts` | If true, Streamlabs test alerts are queued too (each gets a unique id). |
+| `acceptTestAlerts` | If true, Streamlabs test alerts are queued too (each gets a unique id). Set to `false` for live streams, or dashboard test alerts will spawn armies. |
 | `logRawEvents` | If true, prints every raw Streamlabs event (may include donor messages). |
 
 ## Testing

@@ -13,6 +13,12 @@ def test_parse_skips_malformed_lines_and_handles_crlf(game):
     assert game.eval("entries[1].id") == "c3"
 
 
+def test_parse_ignores_partial_trailing_line(game):
+    game.run('entries = donation_army_queue.parse("a1\\tBob\\t20.00\\nb2\\tAlice\\t2")')
+    assert game.eval("#entries") == 1
+    assert game.eval("entries[1].id") == "a1"
+
+
 def test_read_missing_file_is_empty(game):
     assert game.eval('#donation_army_queue.read("does_not_exist_here.txt")') == 0
 

@@ -27,3 +27,10 @@ test('ignores non-donation events', () => {
   assert.deepEqual(parseDonations({ type: 'bits', for: 'twitch_account', message: [{}] }), []);
   assert.deepEqual(parseDonations(null), []);
 });
+
+test('generates a unique id when the event carries none', () => {
+  const event = { type: 'donation', message: [{ name: 'Bob', amount: 5 }, { name: 'Al', amount: 6 }] };
+  const [a, b] = parseDonations(event);
+  assert.match(a.id, /^gen-/);
+  assert.notEqual(a.id, b.id);
+});

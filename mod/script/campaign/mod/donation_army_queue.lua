@@ -6,7 +6,9 @@ local q = donation_army_queue
 
 function q.parse(text)
 	local entries = {}
-	for line in (text or ""):gmatch("[^\r\n]+") do
+	-- only complete lines: the app may be mid-append, so ignore text after the last newline
+	local complete = (text or ""):match("^(.*\n)") or ""
+	for line in complete:gmatch("[^\r\n]+") do
 		local id, donor, amount = line:match("^([^\t]+)\t([^\t]*)\t([^\t]+)$")
 		amount = tonumber(amount)
 		if id and amount then

@@ -22,7 +22,7 @@ enemy army near them. Requested by a streamer who currently has no donation serv
 | 5 | Owning faction | **Configurable per tier**: `rebels` or an invasion/crisis faction key | Rebels: familiar, spawn near settlements like low-control rebellions. Invasion/crisis factions: likely all techs unlocked + buffs. Test both in-game. |
 | 6 | Flavour | Army's general named after the donor | Cheap, high chat value. |
 | 7 | Architecture | **Mod + small companion app (Node)** | WH3 Lua has file IO but no networking, so the app receives Streamlabs events and writes a queue file; the mod does all game-side work. Node because the Streamlabs Socket API is socket.io. |
-| 8 | Spawn location | Fallback chain: **faction leader** (their army, or their position if not leading one) → **strongest player army** (most units, tie-break general rank) → **capital** → **any owned settlement** → none valid: keep queued, retry next turn | Still apply a minimum distance to reduce same-turn attacks. |
+| 8 | Spawn location | Fallback chain: **faction leader** (their army, or their position if not leading one) → **strongest player army** (most units, tie-break general rank) → **capital** → **any owned settlement** → player has no armies and no settlements: **drop the entry** (mark handled, log it) | Still apply a minimum distance to reduce same-turn attacks. |
 | 9 | Spawn timing | **Start of the player's next turn, with a warning when the donation arrives** | Avoids mid-battle/mid-menu weirdness; warning (in-game event message naming donor + tier) builds anticipation on stream. Removes the need for real-time timers in the mod — the queue file can be read on turn start, and polled only for the warning. |
 
 | 10 | Caps | **No cap** — every queued donation spawns at next turn start | 20 × $5 = 20 armies, by design. |
@@ -75,7 +75,8 @@ YouTube excluded as too hard to integrate). Rough target: ~90 viewers → ~+90% 
 - Handled IDs persisted in the save → no double spawns across save/load or restart.
 
 ### Error handling
-- No valid spawn spot → next fallback, else keep queued and retry next turn.
+- Player has no armies and no settlements → entry dropped (marked handled, logged); no spawn.
+- Candidates exist but no valid spot found near any of them → keep queued, retry next turn.
 - Bad unit/subtype key in config → logged, no crash.
 
 ### Testing

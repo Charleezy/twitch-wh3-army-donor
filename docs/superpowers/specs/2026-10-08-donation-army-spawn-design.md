@@ -17,7 +17,7 @@ enemy army near them. Requested by a streamer who currently has no donation serv
 |---|-------|----------|-------|
 | 1 | Trigger source | **Donations via Streamlabs** (Socket API) | Covers PayPal/off-platform tips; Streamlabs also relays Bits/subs. Free. "Test Alert" buttons fire fake donations → test without real money. Dev tests on own channel; streamer later sets up Streamlabs and pastes their own Socket API token. |
 | 2 | Not doing (for now) | Real Twitch Extension panel; direct Twitch EventSub | Extension needs hosted backend + Twitch review. Could layer on later — game mod is unaffected. |
-| 3 | Amount → army | **Fixed tiers** (e.g. $5 warband / $20 full stack / $50 elite) | Tier thresholds + unit lists in an editable config file. |
+| 3 | Amount → army | **Fixed tiers** (e.g. $5 warband / $20 full stack / $50 elite) | Tier thresholds + unit lists in the mod's Lua config (only place tiers live). |
 | 4 | Allegiance | **Hostile to the player** | Friendly armies = possible later addition (so donors who want to help don't feel bad). |
 | 5 | Owning faction | **Configurable per tier**: `rebels` or an invasion/crisis faction key | Rebels: familiar, spawn near settlements like low-control rebellions. Invasion/crisis factions: likely all techs unlocked + buffs. Test both in-game. |
 | 6 | Flavour | Army's general named after the donor | Cheap, high chat value. |
@@ -60,19 +60,22 @@ YouTube excluded as too hard to integrate). Rough target: ~90 viewers → ~+90% 
 
 ### Companion app (Node, streamer's PC, CLI)
 - Connects to Streamlabs Socket API; token from a local, gitignored config file.
-- Per donation: normalise amount to USD (Streamlabs supplies currency), pick the highest tier met;
-  below the lowest tier → ignored (logged).
-- Appends `{id, donor, amount, tier}` to a queue file the game reads. Donation `id` dedupes reconnects.
+- Per donation: convert amount to USD using a static rate table in its config (Streamlabs sends the
+  donor's currency and no USD figure; unknown currency → treated as USD with a warning).
+- Appends `id<TAB>donor<TAB>amount_usd` lines to a queue file in the game folder. Donation `id`
+  dedupes reconnects. The app does NOT know tiers — the mod's config is the single source of truth.
 - Logs to console. Auto-reconnects; donations during downtime are lost (no replay) → logged warning.
 
 ### WH3 mod (campaign Lua)
-- Config: a Lua tiers file — min amount, owning faction (rebels or invasion key), general subtype,
+- Config: a Lua tiers file (single source of truth for tiers) — min USD, owning faction (rebels or invasion key), general subtype,
   unit list, optional XP ranks. Editable by the user.
 - Warning: short real-time poll of the queue during the player's turn; new entries → event message
   ("Bob ($20) has summoned a Warband — it arrives next turn").
 - Spawn: at player turn start, every pending entry spawns via the decision-8 fallback chain;
   declare war on the player if needed; rename general to donor; apply XP.
-- Handled IDs persisted in the save → no double spawns across save/load or restart.
+- Picks the tier (highest `min_usd` met); below the lowest tier → marked handled, logged.
+- Handled IDs persisted in the save → no double spawns across save/load or restart. A new campaign
+  marks the existing queue as handled on its first tick (no backlog spawns).
 
 ### Error handling
 - No leader/army/capital, or no valid spot near any → entry left queued, retried next turn.

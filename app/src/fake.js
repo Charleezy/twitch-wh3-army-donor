@@ -3,6 +3,10 @@ import { loadConfig } from './config.js';
 import { readIds, appendEntry } from './queue.js';
 
 const [donor = 'Test Donor', amount = '5'] = process.argv.slice(2);
+if (!Number.isFinite(Number(amount))) {
+  console.error('Usage: npm run fake -- <donor> <amountUsd>  (amountUsd must be a number)');
+  process.exit(1);
+}
 const config = loadConfig();
 const id = `fake-${Date.now()}`;
 appendEntry(config.queuePath, { id, donor, amountUsd: Number(amount) }, readIds(config.queuePath));

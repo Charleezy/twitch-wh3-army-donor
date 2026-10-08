@@ -6,5 +6,10 @@ export function loadConfig() {
     console.error('Missing app/config.local.json: copy config.example.json and fill it in.');
     process.exit(1);
   }
-  return JSON.parse(fs.readFileSync(url, 'utf8'));
+  try {
+    return JSON.parse(fs.readFileSync(url, 'utf8'));
+  } catch (err) {
+    console.error('app/config.local.json is not valid JSON (use \\\\ or / in Windows paths): ' + err.message);
+    process.exit(1);
+  }
 }

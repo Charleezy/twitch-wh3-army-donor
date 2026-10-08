@@ -40,7 +40,7 @@ App config keys (`app/config.local.json`):
 | Key | Meaning |
 | --- | --- |
 | `socketToken` | Your Streamlabs socket API token. Never logged. |
-| `queuePath` | Full path to the queue file; must be in the WH3 install folder (where `Warhammer3.exe` is). |
+| `queuePath` | Full path to the queue file; must be in the WH3 install folder (where `Warhammer3.exe` is). In JSON, Windows paths need doubled backslashes (`C:\\Games\\...`) or forward slashes. |
 | `currencyRates` | Map of currency code to USD rate, used to convert non-USD donations. Unknown currencies are treated as USD. |
 | `acceptTestAlerts` | If true, Streamlabs test alerts are queued too (each gets a unique id). |
 | `logRawEvents` | If true, prints every raw Streamlabs event (may include donor messages). |

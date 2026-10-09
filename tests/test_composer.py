@@ -78,13 +78,14 @@ def test_heroes_are_distinct(game):
 
 @pytest.mark.parametrize("difficulty", ["easy", "medium", "hard"])
 def test_non_infantry_role_caps_respected(game, difficulty):
+    # infantry and monstrous infantry may overflow their cap when no other role has eligible units
     for race in ["chs", "grn", "lzd", "emp"]:
         for seed in range(1, 15):
             compose(game, race, difficulty, seed)
             game.run(f"""
                 over = nil
                 for role, n in pairs(f.roles) do
-                    if role ~= "melee_infantry" and role ~= "missile_infantry" and n > D.{difficulty}.limits[role][2] then over = role end
+                    if role ~= "melee_infantry" and role ~= "missile_infantry" and role ~= "monstrous_infantry" and n > D.{difficulty}.limits[role][2] then over = role end
                 end
             """)
             assert game.eval("over") is None, (race, seed)
@@ -141,8 +142,11 @@ def test_all_races_all_difficulties_compose(game):
                     local ok, army = pcall(c.compose, roster, settings, seeded_rng(seed), c.weights_for(race))
                     if not ok then
                         table.insert(failures, race .. "/" .. name .. ": " .. tostring(army))
-                    elseif #army.units == 0 or not army.lord or #army.units + 1 + #army.heroes > 20 then
-                        table.insert(failures, race .. "/" .. name .. ": bad army")
+                    else
+                        local total = #army.units + 1 + #army.heroes
+                        if not army.lord or total < settings.min_units or total > settings.max_units or total > 20 then
+                            table.insert(failures, race .. "/" .. name .. ": size " .. total)
+                        end
                     end
                 end
             end
@@ -243,9 +247,95 @@ def test_apocalypse_fills_19_to_20_for_every_race(game):
     assert list(game.eval("failures").values()) == []
 
 
-def test_tier_floor_drops_when_high_tiers_are_empty(game):
+def test_fallback_lowers_cost_floor_and_tier_until_army_fills(game):
+    # only cheap tier-1 units: apocalypse (tiers 3-5, min cost 750) relaxes by 200 gold and one tier per step
+    game.run(RNG + """
+        roster = { faction = "x", lords = { { "lord" } }, heroes = {}, units = { [1] = { melee_infantry = { "a", "b", "c" } } },
+            costs = { a = 300, b = 300, c = 300 } }
+        army = c.compose(roster, D.apocalypse, seeded_rng(3))
+    """)
+    assert 19 <= game.eval("#army.units + 1") <= 20
+    assert game.eval("army.relaxed") is True
+    assert game.eval("army.min_unit_cost") == 150  # 750 -> 550 -> 350 -> 150: stops once units fit
+    assert game.eval("army.min_tier") == 1
+
+
+def test_units_without_cost_relax_to_zero(game):
     game.run(RNG + """
         roster = { faction = "x", lords = { { "lord" } }, heroes = {}, units = { [1] = { melee_infantry = { "a", "b", "c" } } } }
         army = c.compose(roster, D.apocalypse, seeded_rng(3))
     """)
     assert game.eval("#army.units + 1") >= 19
+    assert game.eval("army.min_unit_cost") == 0
+
+
+def test_infantry_minimum_only_up_to_eligible_units(game):
+    # missile infantry exists only below the cost floor: its minimum is skipped, the slots go to eligible roles
+    game.run(RNG + CHECK + """
+        roster = { faction = "x", lords = { { "lord" } }, heroes = {},
+            units = { [3] = { missile_infantry = { "cheap_bow" }, melee_infantry = { "elite" }, monstrous_infantry = { "big" } } },
+            costs = { cheap_bow = 200, elite = 900, big = 1500 } }
+        found = 0
+        for seed = 1, 30 do
+            local army = c.compose(roster, D.apocalypse, seeded_rng(seed))
+            local total = #army.units + 1 + #army.heroes
+            for _, u in ipairs(army.units) do
+                if u == "cheap_bow" then found = found + 1 end
+            end
+            if army.relaxed or total < 19 then found = found + 100 end
+        end
+    """)
+    assert game.eval("found") == 0
+
+
+def cheap_units(game, difficulty, seeds=range(1, 40)):
+    """(race, seed, unit, cost) for units under the difficulty's min_unit_cost in armies that did not relax."""
+    game.run(RNG + f"""
+        cheap = {{}}
+        for race, roster in pairs(R) do
+            for seed = {seeds.start}, {seeds.stop - 1} do
+                local army = c.compose(roster, D.{difficulty}, seeded_rng(seed), c.weights_for(race))
+                for _, u in ipairs(army.units) do
+                    if not army.relaxed and c.cost(roster, u) < D.{difficulty}.min_unit_cost then
+                        table.insert(cheap, race .. "/" .. seed .. ": " .. u)
+                    end
+                end
+            end
+        end
+    """)
+    return list(game.eval("cheap").values())
+
+
+def test_min_unit_cost_per_difficulty(game):
+    assert [game.eval(f"donation_army_config.difficulties.{d}.min_unit_cost") for d in ("easy", "medium", "hard", "apocalypse")] == [0, 0, 500, 750]
+
+
+def test_ogre_apocalypse_has_no_unit_under_750(game):
+    game.run(RNG + """
+        bad, relaxed = {}, 0
+        for seed = 1, 300 do
+            local army = c.compose(R.ogr, D.apocalypse, seeded_rng(seed), c.weights_for("ogr"))
+            if army.relaxed then relaxed = relaxed + 1 end
+            for _, u in ipairs(army.units) do
+                if c.cost(R.ogr, u) < 750 or u:find("gnoblar") or u:find("pigback") then table.insert(bad, seed .. ": " .. u) end
+            end
+        end
+    """)
+    assert list(game.eval("bad").values()) == []
+    assert game.eval("relaxed") == 0
+
+
+def test_hard_and_apocalypse_respect_cost_floor_unless_relaxed(game):
+    assert cheap_units(game, "hard") == []
+    assert cheap_units(game, "apocalypse") == []
+    # relaxation is the exception: only Bretonnia (no infantry above tier 2) needs it for apocalypse
+    game.run(RNG + """
+        relaxed = {}
+        for race, roster in pairs(R) do
+            for _, d in ipairs({ "hard", "apocalypse" }) do
+                if c.compose(roster, D[d], seeded_rng(5), c.weights_for(race)).relaxed then table.insert(relaxed, race .. "/" .. d) end
+            end
+        end
+        table.sort(relaxed)
+    """)
+    assert list(game.eval("relaxed").values()) == ["brt/apocalypse"]

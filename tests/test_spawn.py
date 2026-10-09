@@ -106,7 +106,8 @@ def test_spawn_creates_hunting_invasion_named_after_donor(game):
     assert game.eval("inv.spawn.x") == 100 and game.eval("inv.spawn.y") == 200
     assert game.eval("inv.general_subtype") == "lord_a"
     assert game.eval("inv.xp") == 3
-    assert game.eval("inv.lord_xp.amount") == 12 and game.eval("inv.lord_xp.by_level") is True
+    assert game.eval("inv.lord_xp") is None  # add_character_experience ignores by_level in the game
+    assert game.eval("fake.ranks[inv.cqi]") == 12
     assert game.eval("inv.start.declare_war") is True
     assert game.eval("inv.start.invade") is False
     assert game.eval("inv.start.show") is False
@@ -219,7 +220,22 @@ def test_spawn_skips_xp_and_lord_level_when_minimal(game):
     assert game.eval("#fake.invasions") == 1
     assert game.eval("fake.invasions[1].xp") is None
     assert game.eval("fake.invasions[1].lord_xp") is None
+    assert game.eval("fake.ranks[fake.invasions[1].cqi]") is None
     assert game.eval("#fake.agents") == 0
+
+
+def test_lord_rank_failure_is_logged_and_army_still_spawns(game):
+    game.run(TIERS + """
+        donation_army = { log = function(msg) out(msg) end }
+        fake.rank_fails = true
+        make_faction("invader")
+        player = make_faction("player", { leader = make_character(1) })
+        donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
+    """)
+    assert game.eval("fake.renames[fake.invasions[1].cqi]") == "Bob"
+    assert game.eval("#fake.agents") == 2
+    assert any("lord level 12 not set" in line for line in game.log)
+    assert any(line.startswith("spawned Horde") for line in game.log)
 
 
 def test_duplicate_invasion_key_is_logged_and_entry_done(game):

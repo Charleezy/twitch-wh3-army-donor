@@ -24,12 +24,12 @@ Edit `mod/script/campaign/mod/donation_army_config.lua`, then rebuild with `buil
 
 ### Default tiers
 
-| Tier | Donation | Difficulty | Unit tiers | Army size (incl. lord) | Unit xp | Lord level | Heroes | Available |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Warband | any amount under $20 | `easy` | 1-2 | 6-8 | 1-3 | 5-10 | none | always |
-| Horde | $20+ | `medium` | 1-3 | 14-16 | 3-5 | 10-15 | 0-1 | always |
-| Doomstack | $50+ | `hard` | 1-5 | 17-20 | 5-7 | 15-20 | 0-2 | always |
-| Apocalypse | $100+ | `apocalypse` | 3-5 | 19-20 | 7-9 | 25-30 | 1-2 | from turn 30 |
+| Tier | Donation | Difficulty | Unit tiers | Min unit cost | Army size (incl. lord) | Unit xp | Lord level | Heroes | Available |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Warband | any amount under $20 | `easy` | 1-2 | none | 6-8 | 1-3 | 5-10 | none | always |
+| Horde | $20+ | `medium` | 1-3 | none | 14-16 | 3-5 | 10-15 | 0-1 | always |
+| Doomstack | $50+ | `hard` | 1-5 | 500 | 17-20 | 5-7 | 15-20 | 0-2 | always |
+| Apocalypse | $100+ | `apocalypse` | 3-5 | 750 | 19-20 | 7-9 | 25-30 | 1-2 | from turn 30 |
 
 What a donation spawns, by campaign turn (`turn_tier_bonus`: +1 tier from turn 5, +2 from turn 30, capped at the highest tier available that turn):
 
@@ -47,19 +47,20 @@ The warning popup names the tier for the turn the donation arrives; the spawn re
 Each spawn rolls a random race from `races` (only races whose faction exists in the campaign; the mod logs the others at startup), then builds an army from that race's roster:
 
 - A random lord of the race (generic lords only, no legendary lords), plus a random number of heroes, which join the army. Lords and heroes are picked by type first, then by lore: every lore variant of a caster (e.g. the nine high elf archmage lores) counts as one type (a lore-variant caster is one choice among the race's lord types, not one choice per lore). Heroes are drawn from different types when possible.
-- An infantry core (random melee and missile infantry counts; races without missile infantry get melee instead), then weighted random roles (cavalry, monstrous infantry/cavalry, war beasts, chariots, war machines, monsters) until the army reaches a random size. Ogres favour monstrous infantry. War machines, monsters and Regiments of Renown never appear twice.
-- Units come from the difficulty's unit-tier range; when a role has no units there, the range widens by one tier, and if that is still empty the floor drops to tier 1 so small rosters still fill the army.
+- A unit is eligible only if its tier is in the difficulty's range and its gold cost (multiplayer cost, from the generated rosters) is at least the difficulty's `min_unit_cost`. When a role has no eligible units in the range, that role's range widens by one tier.
+- An infantry core (random melee and missile infantry counts, filled only as far as eligible units allow: e.g. Ogres have no missile infantry costing 750+), then weighted random roles with eligible units (cavalry, monstrous infantry/cavalry, war beasts, chariots, war machines, monsters) until the army reaches a random size. Ogres favour monstrous infantry. When every role is at its cap, infantry and monstrous infantry fill the rest. War machines, monsters and Regiments of Renown never appear twice; other units may repeat.
+- If the army still can't fill, the cost floor drops by 200 gold (never below 0) and the tier range widens down by one, step by step until it fills (e.g. Bretonnia, with no infantry above tier 2, at Apocalypse).
 
-Each `difficulties` entry has `tiers` (unit tier range, 1-5), `min_units`/`max_units` (army size including lord and heroes, at most 20), `unit_xp` (range of ranks for the invasion manager's `add_unit_experience`), `lord_level` (range passed to `add_character_experience`), and `limits`: per role `{ min, max }` (`hero`, `melee_infantry`, `missile_infantry`, `melee_cavalry`, `missile_cavalry`, `monstrous_infantry`, `monstrous_cavalry`, `war_beast`, `chariot`, `warmachine`, `monster`, `generic`). Infantry min/max set the core; other roles only use max. Defaults:
+Each `difficulties` entry has `tiers` (unit tier range, 1-5), `min_unit_cost` (gold; cheaper units are left out, see above), `min_units`/`max_units` (army size including lord and heroes, at most 20), `unit_xp` (range of ranks for the invasion manager's `add_unit_experience`), `lord_level` (range; the general's rank is set to exactly the rolled level with `cm:character_details_set_rank` when the army appears), and `limits`: per role `{ min, max }` (`hero`, `melee_infantry`, `missile_infantry`, `melee_cavalry`, `missile_cavalry`, `monstrous_infantry`, `monstrous_cavalry`, `war_beast`, `chariot`, `warmachine`, `monster`, `generic`). Infantry min/max set the core; other roles only use max. Defaults:
 
-| Difficulty | Unit tiers | Size | Unit xp | Lord level | Heroes | Chariot / war machine / monster |
-| --- | --- | --- | --- | --- | --- | --- |
-| `easy` | 1-2 | 6-8 | 1-3 | 5-10 | 0 | none |
-| `medium` | 1-3 | 14-16 | 3-5 | 10-15 | 0-1 | at most 1 each |
-| `hard` | 1-5 | 17-20 | 5-7 | 15-20 | 0-2 | at most 1 each |
-| `apocalypse` | 3-5 | 19-20 | 7-9 | 25-30 | 1-2 | at most 1 each |
+| Difficulty | Unit tiers | Min unit cost | Size | Unit xp | Lord level | Heroes | Chariot / war machine / monster |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `easy` | 1-2 | 0 | 6-8 | 1-3 | 5-10 | 0 | none |
+| `medium` | 1-3 | 0 | 14-16 | 3-5 | 10-15 | 0-1 | at most 1 each |
+| `hard` | 1-5 | 500 | 17-20 | 5-7 | 15-20 | 0-2 | at most 1 each |
+| `apocalypse` | 3-5 | 750 | 19-20 | 7-9 | 25-30 | 1-2 | at most 1 each |
 
-Rosters live in `mod/script/campaign/mod/donation_army_rosters.lua`, generated from `tools/data/land_encounters_factions_data.lua` (vanilla units, lords and heroes only). Each race spawns as its quest-battle faction (e.g. `wh_main_chs_chaos_qb1`, `wh2_main_skv_skaven_qb1`); all 23 exist in Immortal Empires. Do not edit the rosters file by hand: change the data or `tools/gen_rosters.py`, then regenerate with `python tools/gen_rosters.py` (a test fails if the committed file drifts). Unit, subtype and faction keys are in the game's DB tables `main_units_tables`, `agent_subtypes_tables` and `factions_tables` (export them from `db.pack` with RPFM; `*.tsv` at the repo root is gitignored).
+Rosters live in `mod/script/campaign/mod/donation_army_rosters.lua`, generated from `tools/data/land_encounters_factions_data.lua` (vanilla units, lords and heroes only, with each unit's gold cost). Each race spawns as its quest-battle faction (e.g. `wh_main_chs_chaos_qb1`, `wh2_main_skv_skaven_qb1`); all 23 exist in Immortal Empires. Do not edit the rosters file by hand: change the data or `tools/gen_rosters.py`, then regenerate with `python tools/gen_rosters.py` (a test fails if the committed file drifts). Unit, subtype and faction keys are in the game's DB tables `main_units_tables`, `agent_subtypes_tables` and `factions_tables` (export them from `db.pack` with RPFM; `*.tsv` at the repo root is gitignored).
 
 Army rosters and composition rules adapted from Land Encounters and Points of Interest (Steam Workshop).
 

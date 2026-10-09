@@ -179,7 +179,7 @@ function sp.spawn(entry, tier, faction, distance)
 			error("unknown difficulty '" .. tostring(tier.difficulty) .. "'")
 		end
 		local army = donation_army_composer.compose(roster, settings, sp.rng, donation_army_composer.weights_for(race))
-		local summary = race .. ", lord " .. army.lord .. ", " .. #army.units .. " units, " .. #army.heroes .. " heroes"
+		local summary = race .. ", lord " .. army.lord .. " level " .. army.lord_level .. ", " .. #army.units .. " units, " .. #army.heroes .. " heroes"
 		local key = "donation_army_" .. tostring(entry.id):gsub("[^%w_]", "_")
 		local invasion = invasion_manager:new_invasion(key, roster.faction, table.concat(army.units, ","), { x = x, y = y })
 		if not invasion then
@@ -199,15 +199,22 @@ function sp.spawn(entry, tier, faction, distance)
 		if army.unit_xp > 0 then
 			invasion:add_unit_experience(army.unit_xp)
 		end
-		if army.lord_level > 1 then
-			invasion:add_character_experience(army.lord_level, true)
-		end
+		-- the lord's level is set exactly in the start callback: invasion:add_character_experience ignores its
+		-- by_level flag and adds the level as raw xp (a level 30 roll came out level 17)
 		invasion:start_invasion(function(started)
 			-- runs when the army appears, possibly outside the pcall above
 			local cb_ok, cb_err = pcall(function()
 				local general = cm:get_character_by_cqi(started:get_general():command_queue_index())
 				if general then
 					cm:change_character_custom_name(general, entry.donor, "", "", "")
+					if army.lord_level > 1 then
+						local rank_ok, rank_err = pcall(function()
+							cm:character_details_set_rank(general:character_details(), army.lord_level, false)
+						end)
+						if not rank_ok then
+							log("lord level " .. army.lord_level .. " not set for " .. entry.id .. ": " .. tostring(rank_err))
+						end
+					end
 					add_heroes(general, army.heroes, roster.faction, player_key)
 				end
 				log("spawned " .. tier.name .. " (" .. summary .. ") for " .. entry.donor .. " (" .. entry.id .. ")")

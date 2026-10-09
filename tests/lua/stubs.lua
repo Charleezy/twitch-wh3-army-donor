@@ -11,6 +11,8 @@ fake = {
 	invasions = {},
 	spawn_queries = {},
 	renames = {},
+	ranks = {}, -- cm:character_details_set_rank calls: cqi -> rank
+	rank_fails = false, -- true makes cm:character_details_set_rank error
 	agents = {}, -- cm:create_agent calls
 	embeds = {}, -- cm:embed_agent_in_force calls
 	agent_fails = false, -- true makes cm:create_agent return nil
@@ -41,6 +43,7 @@ function make_character(cqi, opts)
 	c.is_wounded = function() return opts.wounded == true end
 	c.rank = function() return opts.rank or 1 end
 	c.military_force = function() return { general_cqi = cqi } end
+	c.character_details = function() return { cqi = cqi } end
 	fake.characters[cqi] = c
 	return c
 end
@@ -122,6 +125,12 @@ function cm:embed_agent_in_force(agent, force)
 	table.insert(fake.embeds, { agent_cqi = agent:command_queue_index(), general_cqi = force.general_cqi })
 end
 function cm:change_character_custom_name(character, forename) fake.renames[character:command_queue_index()] = forename end
+function cm:character_details_set_rank(details, rank, by_xp)
+	if fake.rank_fails then
+		error("set rank failed")
+	end
+	fake.ranks[details.cqi] = rank
+end
 
 core = {}
 function core:add_listener(name, event, condition, callback)
@@ -154,7 +163,7 @@ function invasion_manager:new_invasion(key, faction_key, units, spawn)
 	function inv:create_general(a, subtype) rec.general_subtype = subtype end
 	function inv:apply_effect(bundle, turns) table.insert(rec.effects, { bundle = bundle, turns = turns }) end
 	function inv:add_unit_experience(amount) rec.xp = amount end
-	function inv:add_character_experience(amount, by_level) rec.lord_xp = { amount = amount, by_level = by_level } end
+	function inv:add_character_experience(amount, by_level) rec.lord_xp = { amount = amount, by_level = by_level } end -- must stay unused
 	function inv:start_invasion(callback, declare_war, invade, show)
 		rec.start = { declare_war = declare_war, invade = invade, show = show }
 		fake.next_cqi = fake.next_cqi + 1

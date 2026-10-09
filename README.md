@@ -46,7 +46,9 @@ Army rosters and composition rules adapted from Land Encounters and Points of In
 
 ## Streamer setup
 
-Get your Streamlabs socket token: Streamlabs account, Settings, API Settings, API Tokens, copy "Your Socket API Token" (the path may differ slightly). Treat it like a password; it only goes in `app/config.local.json`, which is gitignored.
+Get your Streamlabs socket token: in the Streamlabs dashboard go to **Settings → API Settings → API Tokens** ([streamlabs.com/dashboard#/settings/api-settings](https://streamlabs.com/dashboard#/settings/api-settings)) and copy **Your Socket API Token**, the second, longer token (a few hundred characters, starts with `eyJ`). Not "Your API Access Token" above it: that short one makes the app fail with `Socket error: Authentication error`. Treat it like a password; it only goes in `app/config.local.json`, which is gitignored.
+
+![Streamlabs API Tokens page: use "Your Socket API Token"](docs/images/streamlabs-guide.png)
 
 ## Run the app
 

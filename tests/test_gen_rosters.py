@@ -1,5 +1,6 @@
 import importlib.util
 
+import pytest
 from lupa.luajit21 import LuaRuntime
 
 from conftest import MOD_DIR, ROOT
@@ -21,6 +22,8 @@ def load_rosters(text):
 
 
 def test_committed_rosters_match_generator(tmp_path):
+    if not (ROOT / "main_units_tables.tsv").exists():
+        pytest.skip("main_units_tables.tsv (gitignored RPFM export) absent: generator output differs without table validation")
     out = tmp_path / "rosters.lua"
     load_generator().main([str(out)])
     # compare text (universal newlines), not bytes: git may check the committed file out with CRLF
@@ -88,3 +91,44 @@ def test_lord_group_counts_keep_archetypes_distinct():
     chs = lord_groups(rosters, "chs")
     assert any("wh_main_chs_lord" in g and "wh3_dlc25_chs_lord_mnur" in g for g in chs)
     assert not any("wh_main_chs_lord" in g and any("sorcerer_lord" in s for s in g) for g in chs)
+
+
+def roster_unit_keys(rosters):
+    for race in rosters.keys():
+        for roles in rosters[race].units.values():
+            for keys in roles.values():
+                for key in keys.values():
+                    yield race, key
+
+
+def test_no_roster_unit_matches_name_filter():
+    gen = load_generator()
+    _, rosters = load_rosters(COMMITTED.read_text(encoding="utf-8"))
+    bad = [(r, k) for r, k in roster_unit_keys(rosters) if gen.name_excluded(k)]
+    assert not bad, bad
+    assert all(not gen.name_excluded(k) for r in rosters.keys() for k in rosters[r].costs.keys())
+
+
+def test_name_filter_patterns():
+    gen = load_generator()
+    for key in ["wh_dlc08_vmp_mon_terrorgheist_boss", "wh3_dlc27_bst_mon_ghorgon_boss_x", "wh3_dlc25_dwf_inf_slayers_grudge_unit",
+                "wh_main_emp_veh_steam_tank_driver", "wh_main_vmp_mon_terrorgheist_qb", "wh3_dlc24_qb_cst_cav_knights_errant_0"]:
+        assert gen.name_excluded(key), key
+    assert not gen.name_excluded("wh_main_vmp_mon_terrorgheist")
+
+
+def test_roster_units_exist_in_main_units_table():
+    tsv = ROOT / "main_units_tables.tsv"
+    if not tsv.exists():
+        pytest.skip("main_units_tables.tsv (gitignored RPFM export) absent")
+    valid = load_generator().read_tsv_keys(tsv, "unit")
+    _, rosters = load_rosters(COMMITTED.read_text(encoding="utf-8"))
+    missing = [(r, k) for r, k in roster_unit_keys(rosters) if k not in valid]
+    assert not missing, missing
+
+
+def test_vampire_counts_keeps_monsters_and_no_boss_terrorgheist():
+    _, rosters = load_rosters(COMMITTED.read_text(encoding="utf-8"))
+    keys = {k for r, k in roster_unit_keys(rosters) if r == "vmp"}
+    assert "wh_dlc08_vmp_mon_terrorgheist_boss" not in keys
+    assert any(role == "monster" for tier in rosters["vmp"].units.values() for role in tier.keys())

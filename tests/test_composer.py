@@ -396,3 +396,13 @@ def test_melee_core_falls_back_to_monstrous_infantry(game):
     assert game.eval("f.roles.monstrous_infantry") == 5
     assert game.eval("f.roles.melee_infantry") is None
     assert game.eval("f.roles.melee_cavalry") == 2
+
+
+@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard", "apocalypse"])
+def test_every_race_composes_with_known_units(game, difficulty):
+    game.run(RNG + CHECK)
+    races = game.lua.eval("(function() local t = {} for k in pairs(donation_army_rosters) do t[#t + 1] = k end table.sort(t) return t end)()")
+    for race in races.values():
+        for seed in range(1, 4):
+            compose(game, race, difficulty, seed)
+            assert game.eval("#army.units") > 0 and game.eval("f.unknown") == 0, (race, difficulty)

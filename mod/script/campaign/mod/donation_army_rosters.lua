@@ -1586,8 +1586,8 @@ donation_army_rosters = {
 				war_beast = { "wh3_dlc26_ogr_mon_blood_vultures", "wh3_main_ogr_mon_sabretusk_pack_0" },
 			},
 			[3] = {
-				melee_infantry = { "wh3_dlc26_ogr_inf_eshin_maneater_ror", "wh3_main_ogr_mon_gorgers_0" },
-				monstrous_infantry = { "wh3_dlc26_ogr_mon_yhetees", "wh3_main_ogr_inf_ironguts_0", "wh3_main_ogr_inf_leadbelchers_0", "wh3_main_ogr_inf_maneaters_0", "wh3_main_ogr_inf_maneaters_1", "wh3_main_ogr_inf_maneaters_2" },
+				melee_infantry = { "wh3_dlc26_ogr_inf_eshin_maneater_ror" },
+				monstrous_infantry = { "wh3_dlc26_ogr_mon_yhetees", "wh3_main_ogr_inf_ironguts_0", "wh3_main_ogr_inf_leadbelchers_0", "wh3_main_ogr_inf_maneaters_0", "wh3_main_ogr_inf_maneaters_1", "wh3_main_ogr_inf_maneaters_2", "wh3_main_ogr_mon_gorgers_0" },
 				monstrous_cavalry = { "wh3_main_ogr_cav_mournfang_cavalry_0", "wh3_main_ogr_cav_mournfang_cavalry_1", "wh3_main_ogr_cav_mournfang_cavalry_2" },
 				monster = { "wh3_main_ogr_mon_giant_0" },
 			},

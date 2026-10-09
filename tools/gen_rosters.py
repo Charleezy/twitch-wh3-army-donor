@@ -84,6 +84,14 @@ def vanilla(entries):
     return [e for e in (entries or {}).values() if e["origin"] == "vanilla"]
 
 
+# Units the source data files under a role that doesn't fit how they fight. Applied after loading, before the
+# rosters are written; add `"unit_key": "role"` entries as needed (role must be one of ROLES).
+ROLE_OVERRIDES = {
+    # stealthy flankers filed as melee infantry; as melee infantry they became the Ogre infantry core
+    "wh3_main_ogr_mon_gorgers_0": "monstrous_infantry",
+}
+
+
 def unit_cost(entry):
     return int(entry["multiplayer_cost"] or entry["recruitment_cost"] or 0)
 
@@ -97,14 +105,12 @@ def build(data):
         units, costs = {}, {}
         for tier_name in src["units"].keys():
             tier = int(tier_name.removeprefix("tier_"))
-            roles = {}
+            by_role = {}
             for role in ROLES:
-                entries = vanilla(src["units"][tier_name][role])
-                for e in entries:
+                for e in vanilla(src["units"][tier_name][role]):
                     costs[e["land_unit"]] = max(costs.get(e["land_unit"], 0), unit_cost(e))
-                keys = sorted({e["land_unit"] for e in entries})
-                if keys:
-                    roles[role] = keys
+                    by_role.setdefault(ROLE_OVERRIDES.get(e["land_unit"], role), set()).add(e["land_unit"])
+            roles = {role: sorted(by_role[role]) for role in ROLES if by_role.get(role)}
             if roles:
                 units[tier] = roles
         lords = group_by_type(sorted({e["agent_subtype"] for e in vanilla(src["allowed_lords"])}), lambda s: s)

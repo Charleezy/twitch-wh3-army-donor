@@ -151,15 +151,23 @@ function c.compose(roster, settings, rng, weights)
 	end
 
 	-- infantry core first, only as far as eligible units allow (e.g. Ogres have no tier 3+ missile infantry);
-	-- slots the core can't fill go to the weighted roles below
+	-- slots the core can't fill go to the weighted roles below. When melee infantry runs out (Ogres: only a unique
+	-- Regiment of Renown at tier 3+), the melee core is filled from monstrous infantry (Ironguts, Maneaters) instead.
 	local melee_target = c.roll(rng, range(limits.melee_infantry, 0))
 	local missile_target = c.roll(rng, range(limits.missile_infantry, 0))
-	for _, core in ipairs({ { "melee_infantry", melee_target }, { "missile_infantry", missile_target } }) do
-		local role, target = core[1], core[2]
-		while (counts[role] or 0) < target and #army.units < slots do
-			if add(role, 1) == 0 then
+	local core = { { "melee_infantry", melee_target, "monstrous_infantry" }, { "missile_infantry", missile_target } }
+	for _, entry in ipairs(core) do
+		local role, target, fallback = entry[1], entry[2], entry[3]
+		local filled = 0
+		while filled < target and #army.units < slots do
+			local added = add(role, 1)
+			if added == 0 and fallback then
+				added = add(fallback, 1)
+			end
+			if added == 0 then
 				break
 			end
+			filled = filled + added
 		end
 	end
 

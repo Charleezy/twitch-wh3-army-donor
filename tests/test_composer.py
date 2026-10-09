@@ -339,3 +339,60 @@ def test_hard_and_apocalypse_respect_cost_floor_unless_relaxed(game):
         table.sort(relaxed)
     """)
     assert list(game.eval("relaxed").values()) == ["brt/apocalypse"]
+
+
+def test_gorgers_are_monstrous_infantry_by_role_override():
+    import importlib.util
+    from conftest import ROOT
+    spec = importlib.util.spec_from_file_location("gen_rosters", ROOT / "tools/gen_rosters.py")
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+    assert gen.ROLE_OVERRIDES["wh3_main_ogr_mon_gorgers_0"] == "monstrous_infantry"
+    assert set(gen.ROLE_OVERRIDES.values()) <= set(gen.ROLES)
+
+
+def test_ogre_apocalypse_core_comes_from_monstrous_infantry(game):
+    game.run(RNG + CHECK + """
+        bad = {}
+        for seed = 1, 200 do
+            local army = c.compose(R.ogr, D.apocalypse, seeded_rng(seed), c.weights_for("ogr"))
+            local f = facts(R.ogr, army)
+            local gorgers_as_melee = false
+            for _, u in ipairs(army.units) do
+                if u:find("gorgers") and role_of(R.ogr, u) ~= "monstrous_infantry" then gorgers_as_melee = true end
+                if c.cost(R.ogr, u) < 750 then table.insert(bad, seed .. ": cheap " .. u) end
+            end
+            if gorgers_as_melee then table.insert(bad, seed .. ": gorgers as melee infantry") end
+            if (f.roles.monstrous_infantry or 0) < 4 then table.insert(bad, seed .. ": monstrous " .. (f.roles.monstrous_infantry or 0)) end
+            if (f.roles.melee_infantry or 0) > 1 then table.insert(bad, seed .. ": melee " .. f.roles.melee_infantry) end
+        end
+    """)
+    assert list(game.eval("bad").values()) == []
+
+
+def test_melee_core_uses_melee_infantry_when_eligible(game):
+    # Chaos has plenty of melee infantry at 750+ and tiers 3-5: its core stays melee infantry
+    game.run(RNG + CHECK + """
+        low = {}
+        for seed = 1, 60 do
+            local army = c.compose(R.chs, D.apocalypse, seeded_rng(seed), c.weights_for("chs"))
+            local f = facts(R.chs, army)
+            if (f.roles.melee_infantry or 0) < D.apocalypse.limits.melee_infantry[1] then table.insert(low, seed) end
+        end
+    """)
+    assert list(game.eval("low").values()) == []
+
+
+def test_melee_core_falls_back_to_monstrous_infantry(game):
+    game.run(RNG + CHECK + """
+        roster = { faction = "x", lords = { { "lord" } }, heroes = {},
+            units = { [3] = { melee_infantry = { "cheap_inf" }, monstrous_infantry = { "brute" }, melee_cavalry = { "knight" } } },
+            costs = { cheap_inf = 100, brute = 1200, knight = 1200 } }
+        settings = { tiers = { 3, 3 }, min_unit_cost = 750, min_units = 8, max_units = 8,
+            limits = { melee_infantry = { 5, 5 }, monstrous_infantry = { 0, 0 }, melee_cavalry = { 0, 20 } } }
+        army = c.compose(roster, settings, seeded_rng(4))
+        f = facts(roster, army)
+    """)
+    assert game.eval("f.roles.monstrous_infantry") == 5
+    assert game.eval("f.roles.melee_infantry") is None
+    assert game.eval("f.roles.melee_cavalry") == 2

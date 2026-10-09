@@ -1,5 +1,7 @@
 -- Donation Army settings. Edit tiers freely: the highest min_usd a donation meets wins.
 -- Keys come from the game DB tables main_units_tables (units), agent_subtypes_tables (subtypes), factions_tables (factions)
+-- A tier faction must exist in the campaign (e.g. the Chaos `_qb1` factions). Immortal Empires has no
+-- `*_rebels` faction for Chaos and no generic `rebels`; spawning into a missing faction silently does nothing.
 -- An army holds at most 19 units besides its general.
 
 donation_army_config = {
@@ -10,7 +12,7 @@ donation_army_config = {
 		{
 			name = "Warband",
 			min_usd = 5,
-			faction = "wh_main_chs_chaos_rebels",
+			faction = "wh_main_chs_chaos_qb1",
 			subtype = "wh_main_chs_lord",
 			xp_ranks = 0,
 			units = {
@@ -22,7 +24,7 @@ donation_army_config = {
 		{
 			name = "Horde",
 			min_usd = 20,
-			faction = "wh_main_chs_chaos_rebels",
+			faction = "wh_main_chs_chaos_qb1",
 			subtype = "wh_main_chs_lord",
 			xp_ranks = 2,
 			units = {
@@ -37,7 +39,7 @@ donation_army_config = {
 		{
 			name = "Doomstack",
 			min_usd = 50,
-			faction = "wh_main_chs_chaos_rebels",
+			faction = "wh_main_chs_chaos_qb1",
 			subtype = "wh_main_chs_lord",
 			xp_ranks = 5,
 			units = {

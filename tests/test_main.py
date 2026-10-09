@@ -98,3 +98,13 @@ def test_throwing_spawn_is_retried_without_losing_others(game):
     game.run("fail_a1 = false")
     game.player_turn_start()
     assert game.eval("#fake.spawns") == 2
+
+
+def test_install_logs_missing_tier_factions(game):
+    setup(game)
+    game.run('make_faction("wh_main_chs_chaos_qb1")')
+    game.run('donation_army_config.tiers[2].faction = "no_such_faction"')
+    game.first_tick()
+    missing = [line for line in game.log if "does not exist in this campaign" in line]
+    assert len(missing) == 1
+    assert "Horde" in missing[0] and "no_such_faction" in missing[0]

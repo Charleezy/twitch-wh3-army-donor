@@ -1,6 +1,6 @@
 # Donation → Army Spawn (WH3) — Design Decisions
 
-Status: design approved, awaiting implementation plan. Last updated 2026-10-08.
+Status: implemented. Last updated 2026-10-09.
 
 ## Goal
 A streamer's viewers donate; the streamer's Total War: Warhammer 3 campaign spawns an
@@ -17,15 +17,18 @@ enemy army near them. Requested by a streamer who currently has no donation serv
 |---|-------|----------|-------|
 | 1 | Trigger source | **Donations via Streamlabs** (Socket API) | Covers PayPal/off-platform tips; Streamlabs also relays Bits/subs. Free. "Test Alert" buttons fire fake donations → test without real money. Dev tests on own channel; streamer later sets up Streamlabs and pastes their own Socket API token. |
 | 2 | Not doing (for now) | Real Twitch Extension panel; direct Twitch EventSub | Extension needs hosted backend + Twitch review. Could layer on later — game mod is unaffected. |
-| 3 | Amount → army | **Fixed tiers** (e.g. $5 warband / $20 full stack / $50 elite) | Tier thresholds + unit lists in the mod's Lua config (only place tiers live). |
+| 3 | Amount → army | **Fixed tiers** (e.g. $5 warband / $20 full stack / $50 elite) | Tier thresholds in the mod's Lua config (only place tiers live). Fixed unit lists superseded by decision 13 (a tier names a difficulty). |
 | 4 | Allegiance | **Hostile to the player** | Friendly armies = possible later addition (so donors who want to help don't feel bad). |
-| 5 | Owning faction | **Configurable per tier**: `rebels` or an invasion/crisis faction key | Rebels: familiar, spawn near settlements like low-control rebellions. Invasion/crisis factions: likely all techs unlocked + buffs. Test both in-game. **In-game finding (Immortal Empires):** `wh_main_chs_chaos_rebels` and `rebels` do not exist in the campaign (spawn lookups return -1,-1 and `create_force_with_general` silently does nothing); `wh_main_chs_chaos_qb1` works and is the default. Spawn-spot lookups use the player's faction key, not the spawned faction's. |
+| 5 | Owning faction | (Superseded by decision 13: the rolled race's `_qb1` faction.) **Configurable per tier**: `rebels` or an invasion/crisis faction key | Rebels: familiar, spawn near settlements like low-control rebellions. Invasion/crisis factions: likely all techs unlocked + buffs. Test both in-game. **In-game finding (Immortal Empires):** `wh_main_chs_chaos_rebels` and `rebels` do not exist in the campaign (spawn lookups return -1,-1 and `create_force_with_general` silently does nothing); `wh_main_chs_chaos_qb1` works and is the default. Spawn-spot lookups use the player's faction key, not the spawned faction's. |
 | 6 | Flavour | Army's general named after the donor | Cheap, high chat value. |
 | 7 | Architecture | **Mod + small companion app (Node)** | WH3 Lua has file IO but no networking, so the app receives Streamlabs events and writes a queue file; the mod does all game-side work. Node because the Streamlabs Socket API is socket.io. |
 | 8 | Spawn location | Fallback chain: **faction leader** (if on the map) → **strongest player army** (most units, tie-break general rank) → **capital** → none of these / no valid spot: **leave queued**, retried next turn | Kept minimal on purpose. Leaving it queued needs no extra code and never loses a paid donation (e.g. horde faction with wounded leader). Still apply a minimum distance to reduce same-turn attacks. |
 | 9 | Spawn timing | **Start of the player's next turn, with a warning when the donation arrives** | Avoids mid-battle/mid-menu weirdness; warning (in-game event message naming donor + tier) builds anticipation on stream. Removes the need for real-time timers in the mod — the queue file can be read on turn start, and polled only for the warning. |
 
 | 10 | Caps | **No cap** — every queued donation spawns at next turn start | 20 × $5 = 20 armies, by design. |
+| 11 | Turn scaling (2026-10-09) | **Tier bonus by campaign turn**: from turn 5 donations spawn 1 tier higher, from turn 30 2 tiers higher, capped at the top tier (`turn_tier_bonus`); below-lowest donations still ignored | The streamer is a top multiplayer player, so a $20 army is trivial late in the campaign; scaling keeps donations threatening. The bonus uses the turn current when the donation is polled / spawned. |
+| 12 | Random lord (2026-10-09) | ~~Tier `subtype` may be a list of Chaos lords~~ superseded by 13: a random generic lord of the rolled race | The streamer is a top multiplayer player; sorcerer lords add magic, making armies more varied and dangerous. |
+| 13 | Any-race random armies with heroes (2026-10-09) | **Each spawn rolls a race** (config `races`, nil = all 23) and composes a random army from that race's roster for the tier's `difficulty` (easy/medium/hard: unit tiers, size, xp, lord level, hero count, role caps); heroes are embedded in the army. Rosters and rules adapted from the mod Land Encounters and Points of Interest (author/community fine with reuse), vanilla content only, generated by `tools/gen_rosters.py`. Supersedes the fixed Chaos unit lists and decision 12's Chaos lord pool. | Chaos End Times armies lacked variety (streamer/community feedback). Each race is a separate `_qb1` faction, each declared at war by `start_invasion`. |
 
 ## Reference data (RPFM TSV exports, kept locally at the repo root, gitignored — CA game data is not committed)
 - `main_units_tables.tsv` — unit keys for army unit lists.
@@ -53,6 +56,14 @@ marched at and attacked the player's faction leader with no attrition:
 - `inv:add_unit_experience(n)` (vanilla passes small ints 1-7)
 - `inv:start_invasion(function(self) ... self:get_general() ... end, true, false, false)` (declares war)
 `cm:change_character_custom_name` on that general renames it to the donor (the earlier unknown).
+**Races and heroes (proven in-game via `tools/console/race_probe.lua`, Immortal Empires):** all 23 per-race `_qb1`
+factions exist (dead until an invasion revives them): skv, tmb, def, dwf, hef, lzd, nor (`wh_main_nor_norsca_qb1`), cst,
+vmp, emp, brt, grn, wef, bst, cth, tze, chs, kho, nur, sla, chd, ksl, ogr. Heroes join an invasion army from inside the
+`start_invasion` callback:
+- `hx, hy = cm:find_valid_spawn_location_for_character_from_character(player_key, cm:char_lookup_str(general), true, 3)`
+- `hero = cm:create_agent(owner_faction, agent_type, agent_subtype, hx, hy)`
+- `cm:embed_agent_in_force(hero, general:military_force())`
+Not yet proven in-game: the invasion's `add_character_experience(level, true)` (vanilla invasion-manager API).
 Originally unknown: renaming the spawned general to the donor's name (needs a rename call in the callback).
 
 ## Sub-project B: viewer-count buff (requested later, separate)
@@ -77,14 +88,17 @@ YouTube excluded as too hard to integrate). Rough target: ~90 viewers → ~+90% 
 - Logs to console. Auto-reconnects; donations during downtime are lost (no replay) → logged warning.
 
 ### WH3 mod (campaign Lua)
-- Config: a Lua tiers file (single source of truth for tiers) — min USD, owning faction (rebels or invasion key), general subtype,
-  unit list, optional XP ranks. Editable by the user.
+- Config: a Lua file (single source of truth for tiers) — tiers `{ name, min_usd, difficulty }`, allowed `races`,
+  per-difficulty generation settings. Rosters (units per tier/role, lords, heroes, owning `_qb1` faction per race) are a
+  generated Lua file. Editable by the user.
 - Warning: short real-time poll of the queue during the player's turn; new entries → event message
   ("Bob ($20) has summoned a Warband — it arrives next turn").
 - Spawn: at player turn start, every pending entry spawns via the decision-8 fallback chain as a CA
-  invasion (`invasion_manager`): target the anchor (leader or strongest army by character, else capital
-  region), war declared by `start_invasion`, upkeep-free/attrition-immune effect bundle, XP via
-  `add_unit_experience`; rename general to donor in the start callback.
+  invasion (`invasion_manager`): roll a race whose faction exists, compose its army (decision 13), target the
+  anchor (leader or strongest army by character, else capital region), war declared by `start_invasion`,
+  upkeep-free/attrition-immune effect bundle, XP via `add_unit_experience`, lord level via
+  `add_character_experience(level, true)`; in the start callback rename the general to the donor, then create
+  each hero next to the general and embed it in the army.
 - Picks the tier (highest `min_usd` met); below the lowest tier → marked handled, logged.
 - Handled IDs persisted in the save → no double spawns across save/load or restart. A new campaign
   marks the existing queue as handled on its first tick (no backlog spawns).

@@ -96,6 +96,36 @@ function da.spawn_pending(faction)
 	end
 end
 
+-- startup report: races without a roster or whose faction is missing are never rolled; bad difficulties fail spawns
+function da.check_config()
+	local rosters = donation_army_rosters or {}
+	local races = donation_army_config.races
+	if not races then
+		races = {}
+		for race in pairs(rosters) do
+			table.insert(races, race)
+		end
+		table.sort(races)
+	end
+	for _, race in ipairs(races) do
+		local roster = rosters[race]
+		local faction = roster and cm:get_faction(roster.faction)
+		if not roster then
+			da.log("race '" .. tostring(race) .. "' has no roster; it will not be rolled")
+		elseif not faction or faction:is_null_interface() then
+			da.log("race '" .. race .. "' faction '" .. roster.faction .. "' does not exist in this campaign; it will not be rolled")
+		end
+	end
+	if #donation_army_spawn.allowed_races(donation_army_config.races, rosters) == 0 then
+		da.log("no allowed race has a faction in this campaign; donations will not spawn")
+	end
+	for _, tier in ipairs(donation_army_config.tiers) do
+		if not (donation_army_config.difficulties or {})[tier.difficulty] then
+			da.log("tier '" .. tier.name .. "' difficulty '" .. tostring(tier.difficulty) .. "' is not in difficulties; its donations will not spawn")
+		end
+	end
+end
+
 function da.install()
 	if not cm:get_saved_value(INITIALIZED) then
 		local handled = saved_set(HANDLED)
@@ -106,12 +136,7 @@ function da.install()
 		cm:set_saved_value(INITIALIZED, true)
 		da.log("new campaign: existing queue entries skipped")
 	end
-	for _, tier in ipairs(donation_army_config.tiers) do
-		local faction = cm:get_faction(tier.faction)
-		if not faction or faction:is_null_interface() then
-			da.log("tier '" .. tier.name .. "' faction '" .. tier.faction .. "' does not exist in this campaign; its donations will not spawn")
-		end
-	end
+	da.check_config()
 	core:add_listener("donation_army_turn_start", "ScriptEventPlayerFactionTurnStart", true,
 		function(context) da.spawn_pending(context:faction()) end, true)
 	cm:repeat_real_callback(da.poll, donation_army_config.poll_interval_ms, "donation_army_poll")

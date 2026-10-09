@@ -6,7 +6,7 @@ from lupa.luajit21 import LuaRuntime
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 MOD_DIR = ROOT / "mod/script/campaign/mod"
 # load order matters only for the test runtime; the game loads all mod files before first tick
-MOD_FILES = ["donation_army_config.lua", "donation_army_queue.lua", "donation_army_spawn.lua", "donation_army.lua"]
+MOD_FILES = ["donation_army_config.lua", "donation_army_queue.lua", "donation_army_rosters.lua", "donation_army_composer.lua", "donation_army_spawn.lua", "donation_army.lua"]
 LUA_DIR = pathlib.Path(__file__).parent / "lua"
 
 

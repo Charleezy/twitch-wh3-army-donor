@@ -1,7 +1,23 @@
 TIERS = """
 tiers = {
-	{ name = "Warband", min_usd = 5, faction = "wh_main_chs_chaos_qb1", subtype = "wh_main_chs_lord", units = { "u1", "u2" }, xp_ranks = 0 },
-	{ name = "Horde", min_usd = 20, faction = "invader", subtype = "wh_main_chs_lord", units = { "u3" }, xp_ranks = 3 },
+	{ name = "Warband", min_usd = 5, difficulty = "small" },
+	{ name = "Horde", min_usd = 20, difficulty = "test" },
+}
+-- one fake race owned by "invader": fixed lord, two heroes, one unit key
+donation_army_rosters = {
+	inv = {
+		faction = "invader",
+		units = { [1] = { melee_infantry = { "u3" } } },
+		lords = { "lord_a" },
+		heroes = { { agent_type = "champion", agent_subtype = "hero_a" }, { agent_type = "wizard", agent_subtype = "hero_b" } },
+	},
+}
+donation_army_config.races = nil
+donation_army_config.difficulties = {
+	test = { tiers = { 1, 1 }, min_units = 6, max_units = 6, unit_xp = { 3, 3 }, lord_level = { 12, 12 },
+		limits = { hero = { 2, 2 }, melee_infantry = { 3, 3 } } },
+	small = { tiers = { 1, 1 }, min_units = 3, max_units = 3, unit_xp = { 0, 0 }, lord_level = { 1, 1 },
+		limits = { hero = { 0, 0 }, melee_infantry = { 2, 2 } } },
 }
 """
 
@@ -62,7 +78,6 @@ def test_find_position_queries_with_player_faction_key(game):
         player = make_faction("player", { leader = make_character(1) })
         donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
     """)
-    assert game.eval("#fake.spawn_queries") == 1
     assert game.eval("fake.spawn_queries[1].faction") == "player"
 
 
@@ -87,10 +102,11 @@ def test_spawn_creates_hunting_invasion_named_after_donor(game):
     assert game.eval("#fake.invasions") == 1
     assert game.eval("inv.key") == "donation_army_a_1_"
     assert game.eval("inv.faction") == "invader"
-    assert game.eval("inv.units") == "u3"
+    assert game.eval("inv.units") == "u3,u3,u3"
     assert game.eval("inv.spawn.x") == 100 and game.eval("inv.spawn.y") == 200
-    assert game.eval("inv.general_subtype") == "wh_main_chs_lord"
+    assert game.eval("inv.general_subtype") == "lord_a"
     assert game.eval("inv.xp") == 3
+    assert game.eval("inv.lord_xp.amount") == 12 and game.eval("inv.lord_xp.by_level") is True
     assert game.eval("inv.start.declare_war") is True
     assert game.eval("inv.start.invade") is False
     assert game.eval("inv.start.show") is False
@@ -172,6 +188,7 @@ def test_spawn_returns_false_without_position(game):
 def test_spawn_error_is_logged_and_entry_done(game):
     game.run(TIERS + """
         donation_army = { log = function(msg) out(msg) end }
+        make_faction("invader")
         invasion_manager.new_invasion = function() error("bad unit key") end
         player = make_faction("player", { leader = make_character(1) })
         ok = donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 5 }, tiers[1], player, 5)
@@ -180,14 +197,29 @@ def test_spawn_error_is_logged_and_entry_done(game):
     assert any("bad unit key" in line and "Warband" in line for line in game.log)
 
 
-def test_spawn_skips_xp_when_zero(game):
+def test_unknown_difficulty_is_logged_and_entry_done(game):
     game.run(TIERS + """
-        make_faction("wh_main_chs_chaos_qb1")
+        donation_army = { log = function(msg) out(msg) end }
+        make_faction("invader")
+        tiers[1].difficulty = "nightmare"
+        player = make_faction("player", { leader = make_character(1) })
+        ok = donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 5 }, tiers[1], player, 5)
+    """)
+    assert game.eval("ok") is True
+    assert game.eval("#fake.invasions") == 0
+    assert any("nightmare" in line for line in game.log)
+
+
+def test_spawn_skips_xp_and_lord_level_when_minimal(game):
+    game.run(TIERS + """
+        make_faction("invader")
         player = make_faction("player", { leader = make_character(1) })
         donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 5 }, tiers[1], player, 5)
     """)
     assert game.eval("#fake.invasions") == 1
     assert game.eval("fake.invasions[1].xp") is None
+    assert game.eval("fake.invasions[1].lord_xp") is None
+    assert game.eval("#fake.agents") == 0
 
 
 def test_duplicate_invasion_key_is_logged_and_entry_done(game):
@@ -204,15 +236,91 @@ def test_duplicate_invasion_key_is_logged_and_entry_done(game):
     assert any("a1" in line and "invasion" in line for line in game.log)
 
 
-def test_unknown_faction_is_logged_and_entry_done(game):
+def test_heroes_created_next_to_general_and_embedded(game):
     game.run(TIERS + """
         donation_army = { log = function(msg) out(msg) end }
+        make_faction("invader")
+        player = make_faction("player", { leader = make_character(1) })
+        donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
+        inv = fake.invasions[1]
+    """)
+    assert game.eval("#fake.agents") == 2
+    subtypes = {game.eval(f"fake.agents[{i}].agent_subtype") for i in (1, 2)}
+    assert subtypes == {"hero_a", "hero_b"}
+    assert game.eval("fake.agents[1].faction") == "invader"
+    assert game.eval("fake.agents[1].x") == 100
+    # hero spot is looked up from the spawned general with the player's faction key
+    assert game.eval("fake.spawn_queries[2].from") == game.eval('"character_cqi:" .. inv.cqi')
+    assert game.eval("fake.spawn_queries[2].faction") == "player"
+    assert game.eval("#fake.embeds") == 2
+    assert game.eval("fake.embeds[1].general_cqi") == game.eval("inv.cqi")
+    assert game.eval("fake.embeds[1].agent_cqi") == game.eval("fake.agents[1].cqi")
+    assert any("inv" in line and "lord_a" in line and "3 units" in line and "2 heroes" in line for line in game.log)
+
+
+def test_failed_hero_is_logged_and_skipped(game):
+    game.run(TIERS + """
+        donation_army = { log = function(msg) out(msg) end }
+        fake.agent_fails = true
+        make_faction("invader")
         player = make_faction("player", { leader = make_character(1) })
         ok = donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
     """)
     assert game.eval("ok") is True
+    assert game.eval("#fake.embeds") == 0
+    assert game.eval("fake.renames[fake.invasions[1].cqi]") == "Bob"
+    assert sum("not created" in line for line in game.log) == 2
+
+
+def test_allowed_races_filters_config_and_missing_factions(game):
+    game.run("""
+        rosters = { a = { faction = "fa" }, b = { faction = "fb" }, c = { faction = "fc" } }
+        make_faction("fa"); make_faction("fc")
+    """)
+    assert list(game.eval("donation_army_spawn.allowed_races(nil, rosters)").values()) == ["a", "c"]
+    assert list(game.eval('donation_army_spawn.allowed_races({ "c", "b", "zzz" }, rosters)').values()) == ["c"]
+
+
+OTHER = """
+donation_army_rosters.other = { faction = "other_faction", units = { [1] = { melee_infantry = { "o1" } } }, lords = { "lord_o" }, heroes = {} }
+make_faction("invader"); make_faction("other_faction")
+player = make_faction("player", { leader = make_character(1) })
+"""
+
+
+def test_race_is_rolled_from_allowed_races(game):
+    game.run(TIERS + OTHER + """
+        fake.random_pick = 2
+        donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 5 }, tiers[1], player, 5)
+    """)
+    # sorted allowed races: inv, other -> pick 2
+    assert game.eval("fake.invasions[1].faction") == "other_faction"
+    assert game.eval("fake.invasions[1].general_subtype") == "lord_o"
+
+
+def test_config_races_restricts_roll(game):
+    game.run(TIERS + OTHER + """
+        donation_army_config.races = { "other" }
+        donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 5 }, tiers[1], player, 5)
+    """)
+    assert game.eval("fake.invasions[1].faction") == "other_faction"
+
+
+def test_no_allowed_race_is_logged_and_entry_done(game):
+    game.run(TIERS + """
+        donation_army = { log = function(msg) out(msg) end }
+        player = make_faction("player", { leader = make_character(1) })
+        ok = donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 5 }, tiers[1], player, 5)
+    """)
+    assert game.eval("ok") is True
     assert game.eval("#fake.invasions") == 0
-    assert any("a1" in line and "invasion" in line for line in game.log)
+    assert any("no allowed race" in line for line in game.log)
+
+
+def test_rng_adapter_uses_game_argument_order(game):
+    game.run("seen = nil; cm.random_number = function(self, max, min) seen = { max, min }; return min end")
+    assert game.eval("donation_army_spawn.rng(2, 9)") == 2
+    assert game.eval("seen[1]") == 9 and game.eval("seen[2]") == 2
 
 
 SCALE = """
@@ -256,14 +364,3 @@ def test_unsorted_bonus_entries_and_no_bonus_args(game):
     assert game.eval("donation_army_spawn.pick_tier(three, 5, 6, bonus).name") == "Horde"
     assert game.eval("donation_army_spawn.pick_tier(three, 5).name") == "Warband"
     assert game.eval("donation_army_spawn.pick_tier(three, 5, 30, {}).name") == "Warband"
-
-
-def test_subtype_string_passes_through(game):
-    assert game.eval('donation_army_spawn.pick_subtype("wh_main_chs_lord")') == "wh_main_chs_lord"
-
-
-def test_subtype_list_uses_random_pick(game):
-    game.run("fake.random_pick = 2")
-    assert game.eval('donation_army_spawn.pick_subtype({ "a", "b", "c" })') == "b"
-    game.run("fake.random_pick = nil")
-    assert game.eval('donation_army_spawn.pick_subtype({ "a", "b", "c" })') == "a"

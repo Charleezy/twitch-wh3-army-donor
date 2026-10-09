@@ -11,6 +11,9 @@ fake = {
 	invasions = {},
 	spawn_queries = {},
 	renames = {},
+	agents = {}, -- cm:create_agent calls
+	embeds = {}, -- cm:embed_agent_in_force calls
+	agent_fails = false, -- true makes cm:create_agent return nil
 	popups = {},
 	first_tick = {},
 	real_callbacks = {},
@@ -37,6 +40,7 @@ function make_character(cqi, opts)
 	c.is_null_interface = function() return opts.null == true end
 	c.is_wounded = function() return opts.wounded == true end
 	c.rank = function() return opts.rank or 1 end
+	c.military_force = function() return { general_cqi = cqi } end
 	fake.characters[cqi] = c
 	return c
 end
@@ -104,6 +108,19 @@ function cm:model()
 	local world = { region_manager = function() return region_manager end }
 	return { world = function() return world end, turn_number = function() return fake.turn end }
 end
+function cm:create_agent(faction_key, agent_type, agent_subtype, x, y)
+	local rec = { faction = faction_key, agent_type = agent_type, agent_subtype = agent_subtype, x = x, y = y }
+	table.insert(fake.agents, rec)
+	if fake.agent_fails then
+		return nil
+	end
+	fake.next_cqi = fake.next_cqi + 1
+	rec.cqi = fake.next_cqi
+	return make_character(rec.cqi)
+end
+function cm:embed_agent_in_force(agent, force)
+	table.insert(fake.embeds, { agent_cqi = agent:command_queue_index(), general_cqi = force.general_cqi })
+end
 function cm:change_character_custom_name(character, forename) fake.renames[character:command_queue_index()] = forename end
 
 core = {}
@@ -137,6 +154,7 @@ function invasion_manager:new_invasion(key, faction_key, units, spawn)
 	function inv:create_general(a, subtype) rec.general_subtype = subtype end
 	function inv:apply_effect(bundle, turns) table.insert(rec.effects, { bundle = bundle, turns = turns }) end
 	function inv:add_unit_experience(amount) rec.xp = amount end
+	function inv:add_character_experience(amount, by_level) rec.lord_xp = { amount = amount, by_level = by_level } end
 	function inv:start_invasion(callback, declare_war, invade, show)
 		rec.start = { declare_war = declare_war, invade = invade, show = show }
 		fake.next_cqi = fake.next_cqi + 1

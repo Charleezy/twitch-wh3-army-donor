@@ -101,14 +101,29 @@ def test_throwing_spawn_is_retried_without_losing_others(game):
     assert game.eval("#fake.invasions") == 2
 
 
-def test_install_logs_missing_tier_factions(game):
+def test_install_logs_missing_race_factions(game):
     setup(game)
-    game.run('make_faction("wh_main_chs_chaos_qb1")')
-    game.run('donation_army_config.tiers[2].faction = "no_such_faction"')
+    game.run('donation_army_config.races = { "chs", "skv", "nope" }')
     game.first_tick()
-    missing = [line for line in game.log if "does not exist in this campaign" in line]
-    assert len(missing) == 1
-    assert "Horde" in missing[0] and "no_such_faction" in missing[0]
+    missing = [line for line in game.log if "will not be rolled" in line]
+    assert len(missing) == 2
+    assert any("skv" in line and "wh2_main_skv_skaven_qb1" in line for line in missing)
+    assert any("nope" in line and "no roster" in line for line in missing)
+    assert not any("no allowed race" in line for line in game.log)
+
+
+def test_install_logs_when_no_race_can_spawn(game):
+    game.run(PLAYER)
+    game.first_tick()
+    assert any("no allowed race" in line for line in game.log)
+
+
+def test_install_logs_unknown_tier_difficulty(game):
+    setup(game)
+    game.run('donation_army_config.tiers[2].difficulty = "nightmare"')
+    game.first_tick()
+    bad = [line for line in game.log if "nightmare" in line]
+    assert len(bad) == 1 and "Horde" in bad[0]
 
 
 def test_warning_names_scaled_tier(game):
@@ -120,12 +135,17 @@ def test_warning_names_scaled_tier(game):
     assert "Horde" in game.eval("fake.popups[1]")
 
 
-def test_spawn_uses_scaled_tier_and_random_lord(game):
+def test_spawn_uses_scaled_tier_difficulty_and_rolled_race(game):
     setup(game)
     game.first_tick()
-    game.queue("a1\tBob\t5.00")
-    game.run("fake.turn = 5; fake.random_pick = 3")
+    game.queue("a1	Bob	5.00")
+    game.run("fake.turn = 5")
     game.player_turn_start()
     assert game.eval("#fake.invasions") == 1
-    assert game.eval("fake.invasions[1].units") == game.eval('table.concat(donation_army_config.tiers[2].units, ",")')
-    assert game.eval("fake.invasions[1].general_subtype") == game.eval("donation_army_config.tiers[2].subtype[3]")
+    inv = "fake.invasions[1]"
+    # only the Chaos faction exists in this fake campaign, so chs is rolled; $5 at turn 5 is a Horde (medium)
+    assert game.eval(f"{inv}.faction") == "wh_main_chs_chaos_qb1"
+    assert game.eval(f"{inv}.general_subtype") in list(game.eval("donation_army_rosters.chs.lords").values())
+    units = game.eval(f"{inv}.units").split(",")
+    medium = "donation_army_config.difficulties.medium"
+    assert game.eval(f"{medium}.min_units") <= len(units) + 1 <= game.eval(f"{medium}.max_units")

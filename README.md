@@ -14,7 +14,7 @@ Edit `mod/script/campaign/mod/donation_army_config.lua`, then rebuild with `buil
 | Key | Meaning |
 | --- | --- |
 | `queue_file` | Queue file name, relative to the WH3 install folder (default `donation_army_queue.txt`). Must match the app's `queuePath`. |
-| `poll_interval_ms` | How often the mod checks the queue file (default 3000). |
+| `poll_interval_ms` | How often the mod checks the queue file (default 10000, i.e. 10 seconds). |
 | `spawn_distance` | Spawn distance from the anchor (default 5). |
 | `tiers` | List of tiers. The tier with the highest `min_usd` that a donation meets wins. |
 

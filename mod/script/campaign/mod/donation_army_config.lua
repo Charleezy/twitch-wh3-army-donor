@@ -4,7 +4,7 @@
 
 donation_army_config = {
 	queue_file = "donation_army_queue.txt", -- relative to the WH3 install folder
-	poll_interval_ms = 3000,
+	poll_interval_ms = 10000,
 	spawn_distance = 5,
 	tiers = {
 		{

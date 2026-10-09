@@ -8,8 +8,8 @@ donation_army_rosters = {
 	inv = {
 		faction = "invader",
 		units = { [1] = { melee_infantry = { "u3" } } },
-		lords = { "lord_a" },
-		heroes = { { agent_type = "champion", agent_subtype = "hero_a" }, { agent_type = "wizard", agent_subtype = "hero_b" } },
+		lords = { { "lord_a" } },
+		heroes = { { { agent_type = "champion", agent_subtype = "hero_a" } }, { { agent_type = "wizard", agent_subtype = "hero_b" } } },
 	},
 }
 donation_army_config.races = nil
@@ -282,7 +282,7 @@ def test_allowed_races_filters_config_and_missing_factions(game):
 
 
 OTHER = """
-donation_army_rosters.other = { faction = "other_faction", units = { [1] = { melee_infantry = { "o1" } } }, lords = { "lord_o" }, heroes = {} }
+donation_army_rosters.other = { faction = "other_faction", units = { [1] = { melee_infantry = { "o1" } } }, lords = { { "lord_o" } }, heroes = {} }
 make_faction("invader"); make_faction("other_faction")
 player = make_faction("player", { leader = make_character(1) })
 """

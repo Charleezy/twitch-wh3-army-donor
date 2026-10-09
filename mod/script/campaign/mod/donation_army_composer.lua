@@ -95,16 +95,20 @@ function c.compose(roster, settings, rng, weights)
 	local limits = settings.limits or {}
 	local army = { units = {}, heroes = {} }
 
-	army.lord = roster.lords[c.roll(rng, 1, #roster.lords)]
+	-- lords: a type group first (so lore variants of one caster don't outweigh the other lord types), then a subtype
+	local lord_group = roster.lords[c.roll(rng, 1, #roster.lords)]
+	army.lord = lord_group[c.roll(rng, 1, #lord_group)]
 	army.unit_xp = c.roll(rng, range(settings.unit_xp, 0))
 	army.lord_level = c.roll(rng, range(settings.lord_level, 1))
 
 	local size = math.min(c.roll(rng, settings.min_units, settings.max_units), c.MAX_ARMY)
 	local hero_count = math.min(c.roll(rng, range(limits.hero, 0)), #roster.heroes, size - 2)
-	for i, hero in ipairs(shuffled(roster.heroes, rng)) do
+	-- heroes: shuffle the type groups and take one random hero from each, so heroes differ in type when possible
+	for i, group in ipairs(shuffled(roster.heroes, rng)) do
 		if i > hero_count then
 			break
 		end
+		local hero = group[c.roll(rng, 1, #group)]
 		table.insert(army.heroes, { agent_type = hero.agent_type, agent_subtype = hero.agent_subtype })
 	end
 	local slots = size - 1 - #army.heroes

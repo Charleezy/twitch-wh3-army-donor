@@ -28,7 +28,7 @@ Default tiers: $5 Warband (`easy`), $20 Horde (`medium`), $50 Doomstack (`hard`)
 
 Each spawn rolls a random race from `races` (only races whose faction exists in the campaign; the mod logs the others at startup), then builds an army from that race's roster:
 
-- A random lord of the race (generic lords only, no legendary lords), plus a random number of distinct heroes, which join the army.
+- A random lord of the race (generic lords only, no legendary lords), plus a random number of heroes, which join the army. Lords and heroes are picked by type first, then by lore: every lore variant of a caster (e.g. the nine high elf archmage lores) counts as one type (a lore-variant caster is one choice among the race's lord types, not one choice per lore). Heroes are drawn from different types when possible.
 - An infantry core (random melee and missile infantry counts; races without missile infantry get melee instead), then weighted random roles (cavalry, monstrous infantry/cavalry, war beasts, chariots, war machines, monsters) until the army reaches a random size. Ogres favour monstrous infantry. War machines, monsters and Regiments of Renown never appear twice.
 - Units come from the difficulty's unit-tier range; when a role has no units there, the range widens by one tier.
 
@@ -36,7 +36,7 @@ Each `difficulties` entry has `tiers` (unit tier range, 1-5), `min_units`/`max_u
 
 | Difficulty | Unit tiers | Size | Unit xp | Lord level | Heroes | Chariot / war machine / monster |
 | --- | --- | --- | --- | --- | --- | --- |
-| `easy` | 1-2 | 10-13 | 1-3 | 5-10 | 0 | none |
+| `easy` | 1-2 | 6-8 | 1-3 | 5-10 | 0 | none |
 | `medium` | 1-3 | 14-16 | 3-5 | 10-15 | 0-1 | at most 1 each |
 | `hard` | 1-5 | 17-20 | 5-7 | 15-20 | 0-2 | at most 1 each |
 

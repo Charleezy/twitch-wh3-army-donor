@@ -145,7 +145,8 @@ def test_spawn_uses_scaled_tier_difficulty_and_rolled_race(game):
     inv = "fake.invasions[1]"
     # only the Chaos faction exists in this fake campaign, so chs is rolled; $5 at turn 5 is a Horde (medium)
     assert game.eval(f"{inv}.faction") == "wh_main_chs_chaos_qb1"
-    assert game.eval(f"{inv}.general_subtype") in list(game.eval("donation_army_rosters.chs.lords").values())
+    chs_lords = [s for group in game.eval("donation_army_rosters.chs.lords").values() for s in group.values()]
+    assert game.eval(f"{inv}.general_subtype") in chs_lords
     units = game.eval(f"{inv}.units").split(",")
     medium = "donation_army_config.difficulties.medium"
     assert game.eval(f"{medium}.min_units") <= len(units) + 1 <= game.eval(f"{medium}.max_units")

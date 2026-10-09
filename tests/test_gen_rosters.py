@@ -48,15 +48,43 @@ def test_only_vanilla_units_lords_heroes():
     lua, rosters = load_rosters(text)
     skv = rosters["skv"]
     assert "wh2_main_skv_inf_clanrats_0" in list(skv.units[1].melee_infantry.values())
-    heroes = [(h.agent_type, h.agent_subtype) for h in skv.heroes.values()]
+    heroes = [(h.agent_type, h.agent_subtype) for g in skv.heroes.values() for h in g.values()]
     assert ("champion", "wh2_dlc16_skv_chieftain") in heroes
-    assert "wh2_main_skv_warlord" in list(skv.lords.values())
+    assert "wh2_main_skv_warlord" in [s for g in skv.lords.values() for s in g.values()]
 
 
 def test_lords_and_heroes_unique_and_sorted():
     _, rosters = load_rosters(COMMITTED.read_text(encoding="utf-8"))
     for race in rosters.keys():
-        lords = list(rosters[race].lords.values())
-        assert lords and lords == sorted(set(lords)), race
-        heroes = [(h.agent_type, h.agent_subtype) for h in rosters[race].heroes.values()]
-        assert heroes == sorted(set(heroes)), race
+        lords = [s for g in rosters[race].lords.values() for s in g.values()]
+        assert lords and len(lords) == len(set(lords)), race
+        heroes = [(h.agent_type, h.agent_subtype) for g in rosters[race].heroes.values() for h in g.values()]
+        assert len(heroes) == len(set(heroes)), race
+        assert all(len(g) > 0 for g in rosters[race].lords.values()), race
+
+
+def lord_groups(rosters, race):
+    return [sorted(g.values()) for g in rosters[race].lords.values()]
+
+
+def test_lore_variants_share_a_lord_group():
+    _, rosters = load_rosters(COMMITTED.read_text(encoding="utf-8"))
+    for race, prefix, size in [("hef", "wh2_dlc15_hef_archmage_", 9), ("lzd", "wh2_dlc13_lzd_slann_mage_priest_", 7),
+                               ("bst", "wh2_twa04_bst_great_bray_shaman_", 4), ("brt", "wh_dlc07_brt_prophetess_", 3),
+                               ("wef", "wh2_dlc16_wef_spellweaver_", 5), ("def", "wh2_dlc10_def_supreme_sorceress_", 5)]:
+        group = next(g for g in lord_groups(rosters, race) if any(s.startswith(prefix) for s in g))
+        assert sum(s.startswith(prefix) for s in group) == size, race
+    # the plain slann lands with the lores
+    slann = next(g for g in lord_groups(rosters, "lzd") if "wh2_main_lzd_slann_mage_priest" in g)
+    assert "wh2_dlc13_lzd_slann_mage_priest_life" in slann
+
+
+def test_lord_group_counts_keep_archetypes_distinct():
+    _, rosters = load_rosters(COMMITTED.read_text(encoding="utf-8"))
+    counts = {race: len(lord_groups(rosters, race)) for race in rosters.keys()}
+    assert counts["brt"] == 2 and counts["bst"] == 3 and counts["hef"] == 3 and counts["chs"] == 3
+    assert counts["skv"] == 4 and counts["cth"] == 3 and counts["ogr"] == 2 and counts["tze"] == 2
+    # chs lord marks collapse into one lord group, and Daemon Princes stay apart from sorcerer lords
+    chs = lord_groups(rosters, "chs")
+    assert any("wh_main_chs_lord" in g and "wh3_dlc25_chs_lord_mnur" in g for g in chs)
+    assert not any("wh_main_chs_lord" in g and any("sorcerer_lord" in s for s in g) for g in chs)

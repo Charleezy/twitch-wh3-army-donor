@@ -23,9 +23,9 @@ donation_army_config = {
 	-- lord level, and per-role {min, max} counts (infantry min/max is the core; other roles only use max)
 	difficulties = {
 		easy = {
-			tiers = { 1, 2 }, min_units = 10, max_units = 13, unit_xp = { 1, 3 }, lord_level = { 5, 10 },
+			tiers = { 1, 2 }, min_units = 6, max_units = 8, unit_xp = { 1, 3 }, lord_level = { 5, 10 },
 			limits = {
-				hero = { 0, 0 }, melee_infantry = { 3, 6 }, missile_infantry = { 0, 3 },
+				hero = { 0, 0 }, melee_infantry = { 2, 5 }, missile_infantry = { 0, 2 },
 				melee_cavalry = { 0, 2 }, missile_cavalry = { 0, 2 }, monstrous_infantry = { 0, 2 },
 				monstrous_cavalry = { 0, 2 }, war_beast = { 0, 2 },
 				chariot = { 0, 0 }, warmachine = { 0, 0 }, monster = { 0, 0 }, generic = { 0, 0 },

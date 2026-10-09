@@ -33,6 +33,7 @@ enemy army near them. Requested by a streamer who currently has no donation serv
 | 15 | Apocalypse top tier (2026-10-09) | **Fourth tier Apocalypse, $100, difficulty `apocalypse`** (unit tiers 3-5, 19-20 units, xp 7-9, lord level 25-30, 1-2 heroes), gated by the optional tier field `min_turn = 30`: before turn 30 it is excluded from both the base pick and the turn-bonus cap, so $100 gives a Doomstack until then. | Late-game donations keep a higher ceiling; the user chose a top tier over per-turn growth, and not before turn 30. |
 | 16 | Min unit cost; exact lord level (2026-10-09) | **Per-difficulty `min_unit_cost`** (easy 0, medium 0, hard 500, apocalypse 750; costs are the units' multiplayer cost, generated into the rosters): cheaper units are not eligible; infantry minimums only go as far as eligible units allow, and a melee core with no eligible melee infantry is filled from monstrous infantry; `ROLE_OVERRIDES` in `tools/gen_rosters.py` re-files mis-roled units (Ogre Gorgers → monstrous infantry); if the army can't fill, the floor drops by 200 and the tier range widens down by one per step (replaces "drop the tier floor to 1"). **Lord level set with `cm:character_details_set_rank(general:character_details(), level, false)`** in the start callback. | In-game an Ogre Apocalypse rolled Gnoblars, Gnoblar slingers and Pigback Riders (forced missile/melee infantry minimums, then the tier-1 fallback). With only the cost floor, Gorgers (stealth flankers filed as melee infantry) became the Ogre core; the user is fine with duplicates but wants Ironguts/Maneaters as the core. 750 rather than 1000 so Chaos Warriors (~800) stay eligible, as in Archaon's End Times armies. The invasion manager's `add_character_experience(level, true)` ignores `by_level` and adds the level as raw xp (in-game a 25-30 roll gave level 17); CA's End Times scripts set ranks with `character_details_set_rank`. |
 | 17 | Roster validation (2026-10-09) | **Roster generator drops unit keys by name (`_boss`, `_grudge_unit`, `_driver`, `_qb`) and any key absent from `main_units_tables` / `agent_subtypes_tables`** | A Monster Hunt boss (`wh_dlc08_vmp_mon_terrorgheist_boss`, "The Abyssal Shrieker") spawned in-game; an invalid key can fail the whole spawn. 58 special keys dropped by name, 10 stale keys by table. |
+| 18 | Skip stale donations on every load (2026-10-09) | **On every first tick (new campaign or loaded save) the mod marks as handled every unhandled queue entry older than `backlog_grace_minutes` (10) or lacking a timestamp; recent ones still spawn. Queue lines gain a 4th field, epoch seconds.** | Bug: the queue file is shared by all saves, so loading another save spawned old test donations. Replaces the new-campaign-only skip (`donation_army_initialized` removed). The grace window keeps crash recovery. If `os.time` is unavailable every unhandled entry is treated as stale. |
 
 ## Reference data (RPFM TSV exports, kept locally at the repo root, gitignored — CA game data is not committed)
 - `main_units_tables.tsv` — unit keys for army unit lists.
@@ -89,7 +90,7 @@ YouTube excluded as too hard to integrate). Rough target: ~90 viewers → ~+90% 
 - Connects to Streamlabs Socket API; token from a local, gitignored config file.
 - Per donation: convert amount to USD using a static rate table in its config (Streamlabs sends the
   donor's currency and no USD figure; unknown currency → treated as USD with a warning).
-- Appends `id<TAB>donor<TAB>amount_usd` lines to a queue file in the game folder. Donation `id`
+- Appends `id<TAB>donor<TAB>amount_usd<TAB>epoch_seconds` lines (epoch = unix seconds when written; older 3-field lines still parse and count as stale) to a queue file in the game folder. Donation `id`
   dedupes reconnects. The app does NOT know tiers — the mod's config is the single source of truth.
 - Logs to console. Auto-reconnects; donations during downtime are lost (no replay) → logged warning.
 
@@ -106,8 +107,9 @@ YouTube excluded as too hard to integrate). Rough target: ~90 viewers → ~+90% 
   `cm:character_details_set_rank`, then create
   each hero next to the general and embed it in the army.
 - Picks the tier (highest `min_usd` met); below the lowest tier → marked handled, logged.
-- Handled IDs persisted in the save → no double spawns across save/load or restart. A new campaign
-  marks the existing queue as handled on its first tick (no backlog spawns).
+- Handled IDs persisted in the save → no double spawns across save/load or restart. On every load (first tick) the mod
+  marks as handled each unhandled queue entry older than `backlog_grace_minutes` (10) or without a timestamp
+  (decision 18), so only recent donations still spawn.
 
 ### Error handling
 - No leader/army/capital, or no valid spot near any → entry left queued, retried next turn.

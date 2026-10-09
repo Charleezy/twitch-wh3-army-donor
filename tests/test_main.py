@@ -12,7 +12,69 @@ def test_new_campaign_skips_backlog(game):
     game.first_tick()
     game.player_turn_start()
     assert game.eval("#fake.invasions") == 0
-    assert game.eval("fake.saved.donation_army_initialized") is True
+    assert "[DonationArmy] skipped 1 donations queued before this save was loaded" in game.log
+
+
+NOW = 1_800_000_000
+
+
+def load_at_now(game):
+    game.run(f"donation_army.now = function() return {NOW} end")
+
+
+def test_load_skips_old_entries_but_keeps_recent_ones(game):
+    setup(game)
+    load_at_now(game)
+    game.queue(f"old\tBob\t50.00\t{NOW - 11 * 60}", f"recent\tAmy\t20.00\t{NOW - 9 * 60}", f"future\tZed\t5.00\t{NOW + 5}")
+    game.first_tick()
+    assert "[DonationArmy] skipped 1 donations queued before this save was loaded" in game.log
+    game.poll()
+    assert "Amy" in game.eval("fake.popups[1]") and "Zed" in game.eval("fake.popups[1]") and "Bob" not in game.eval("fake.popups[1]")
+    game.player_turn_start()
+    assert game.eval("#fake.invasions") == 2
+    assert game.eval("fake.saved.donation_army_handled.old") is True
+
+
+def test_load_treats_three_field_legacy_lines_as_stale(game):
+    setup(game)
+    load_at_now(game)
+    game.queue("legacy\tBob\t50.00")
+    game.first_tick()
+    game.poll()
+    game.player_turn_start()
+    assert game.eval("#fake.popups") == 0
+    assert game.eval("#fake.invasions") == 0
+
+
+def test_load_keeps_entries_handled_earlier(game):
+    setup(game)
+    load_at_now(game)
+    game.run('fake.saved.donation_army_handled = { done = true }')
+    game.queue(f"done\tBob\t50.00\t{NOW - 60}", f"mine\tAmy\t20.00\t{NOW - 60}")
+    game.first_tick()
+    game.player_turn_start()
+    assert game.eval("#fake.invasions") == 1
+    assert game.eval("fake.renames[fake.invasions[1].cqi]") == "Amy"
+
+
+def test_load_without_os_time_treats_everything_as_stale(game):
+    setup(game)
+    game.run("os.time = function() error('unavailable') end")
+    game.queue(f"a\tBob\t50.00\t{NOW}")
+    game.first_tick()
+    game.player_turn_start()
+    assert game.eval("#fake.invasions") == 0
+
+
+def test_running_save_is_unaffected_after_first_tick(game):
+    setup(game)
+    load_at_now(game)
+    game.first_tick()
+    game.queue("old_style\tBob\t20.00", f"ancient\tAmy\t20.00\t{NOW - 3600}")
+    game.poll()
+    assert "Bob" in game.eval("fake.popups[1]") and "Amy" in game.eval("fake.popups[1]")
+    game.player_turn_start()
+    assert game.eval("#fake.invasions") == 2
 
 
 def test_warning_then_spawn_next_turn(game):

@@ -14,6 +14,7 @@ Edit `mod/script/campaign/mod/donation_army_config.lua`, then rebuild with `buil
 | Key | Meaning |
 | --- | --- |
 | `queue_file` | Queue file name, relative to the WH3 install folder (default `donation_army_queue.txt`). Must match the app's `queuePath`. |
+| `backlog_grace_minutes` | When a save loads (new campaign or loaded save), queued donations older than this many minutes that the save has not handled are skipped; newer ones still spawn (crash recovery). Default 10. |
 | `poll_interval_ms` | How often the mod checks the queue file (default 10000, i.e. 10 seconds). |
 | `spawn_distance` | Spawn distance from the anchor (default 5). |
 | `army_effect_bundle` | Effect bundle applied to every spawned army for its lifetime (default `wh2_dlc16_bundle_military_upkeep_free_force_immune_to_regionless_attrition`, which removes upkeep and regionless attrition). Set to `""` to disable. |
@@ -100,6 +101,7 @@ App config keys (`app/config.local.json`):
 ## Limits
 
 - Donations made while the app is off are lost.
-- A new campaign skips donations queued before it started.
-- Loading an older save may re-spawn armies already spawned in a later save.
-- The queue file lives in the game folder.
+- Every time a save loads (new campaign or loaded save), donations in the queue that the save has not handled and that were queued more than `backlog_grace_minutes` (default 10) before loading are skipped. Only donations from the last few minutes before loading still spawn (crash recovery), so old test donations and donations meant for other saves do not appear.
+- Queue lines without a timestamp (written by an older app version) count as old and are skipped on load.
+- The mod reads the clock with `os.time()`; if the game does not provide it, every unhandled donation is skipped on load. The streamer's PC clock must be roughly right, since the app stamps each line.
+- The queue file lives in the game folder and is shared by all saves. Each line is `id<TAB>donor<TAB>amount_usd<TAB>epoch_seconds` (the last field is unix time in seconds, written by the app).

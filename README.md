@@ -18,11 +18,11 @@ Edit `mod/script/campaign/mod/donation_army_config.lua`, then rebuild with `buil
 | `spawn_distance` | Spawn distance from the anchor (default 5). |
 | `army_effect_bundle` | Effect bundle applied to every spawned army for its lifetime (default `wh2_dlc16_bundle_military_upkeep_free_force_immune_to_regionless_attrition`, which removes upkeep and regionless attrition). Set to `""` to disable. |
 | `turn_tier_bonus` | List of `{ turn, tiers }`. From that turn on, every donation spawns that many tiers higher (tiers ordered by `min_usd`), capped at the top tier; the entry with the highest `turn` reached applies. Donations below the lowest tier are still ignored. Default `{ turn = 5, tiers = 1 }, { turn = 30, tiers = 2 }`; set to `{}` to disable. |
-| `tiers` | List of `{ name, min_usd, difficulty }`. The tier with the highest `min_usd` that a donation meets wins; `difficulty` names an entry of `difficulties`. |
+| `tiers` | List of `{ name, min_usd, difficulty, min_turn }`. The tier with the highest `min_usd` that a donation meets wins; `difficulty` names an entry of `difficulties`. `min_turn` is optional: before that campaign turn the tier does not exist (it is skipped by the base pick and by the `turn_tier_bonus` cap). |
 | `races` | Races an army may be rolled from, as roster keys (e.g. `{ "chs", "skv", "emp" }`). `nil` (default) allows every race in `donation_army_rosters.lua`. |
 | `difficulties` | Army generation settings per difficulty (see below). |
 
-Default tiers: $5 Warband (`easy`), $20 Horde (`medium`), $50 Doomstack (`hard`). From turn 5 donations spawn one tier higher ($5 gives a Horde, $20 a Doomstack) and from turn 30 two tiers higher (capped at Doomstack).
+Default tiers: $5 Warband (`easy`), $20 Horde (`medium`), $50 Doomstack (`hard`), $100 Apocalypse (`apocalypse`, only from turn 30; before that $100 or more gives a Doomstack). From turn 5 donations spawn one tier higher ($5 gives a Horde, $20 a Doomstack) and from turn 30 two tiers higher, capped at the top available tier (Doomstack before turn 30, Apocalypse from turn 30: $20 and $50 then give an Apocalypse, $5 a Doomstack).
 
 ### How armies are generated
 
@@ -30,7 +30,7 @@ Each spawn rolls a random race from `races` (only races whose faction exists in 
 
 - A random lord of the race (generic lords only, no legendary lords), plus a random number of heroes, which join the army. Lords and heroes are picked by type first, then by lore: every lore variant of a caster (e.g. the nine high elf archmage lores) counts as one type (a lore-variant caster is one choice among the race's lord types, not one choice per lore). Heroes are drawn from different types when possible.
 - An infantry core (random melee and missile infantry counts; races without missile infantry get melee instead), then weighted random roles (cavalry, monstrous infantry/cavalry, war beasts, chariots, war machines, monsters) until the army reaches a random size. Ogres favour monstrous infantry. War machines, monsters and Regiments of Renown never appear twice.
-- Units come from the difficulty's unit-tier range; when a role has no units there, the range widens by one tier.
+- Units come from the difficulty's unit-tier range; when a role has no units there, the range widens by one tier, and if that is still empty the floor drops to tier 1 so small rosters still fill the army.
 
 Each `difficulties` entry has `tiers` (unit tier range, 1-5), `min_units`/`max_units` (army size including lord and heroes, at most 20), `unit_xp` (range of ranks for the invasion manager's `add_unit_experience`), `lord_level` (range passed to `add_character_experience`), and `limits`: per role `{ min, max }` (`hero`, `melee_infantry`, `missile_infantry`, `melee_cavalry`, `missile_cavalry`, `monstrous_infantry`, `monstrous_cavalry`, `war_beast`, `chariot`, `warmachine`, `monster`, `generic`). Infantry min/max set the core; other roles only use max. Defaults:
 
@@ -39,6 +39,7 @@ Each `difficulties` entry has `tiers` (unit tier range, 1-5), `min_units`/`max_u
 | `easy` | 1-2 | 6-8 | 1-3 | 5-10 | 0 | none |
 | `medium` | 1-3 | 14-16 | 3-5 | 10-15 | 0-1 | at most 1 each |
 | `hard` | 1-5 | 17-20 | 5-7 | 15-20 | 0-2 | at most 1 each |
+| `apocalypse` | 3-5 | 19-20 | 7-9 | 25-30 | 1-2 | at most 1 each |
 
 Rosters live in `mod/script/campaign/mod/donation_army_rosters.lua`, generated from `tools/data/land_encounters_factions_data.lua` (vanilla units, lords and heroes only). Each race spawns as its quest-battle faction (e.g. `wh_main_chs_chaos_qb1`, `wh2_main_skv_skaven_qb1`); all 23 exist in Immortal Empires. Do not edit the rosters file by hand: change the data or `tools/gen_rosters.py`, then regenerate with `python tools/gen_rosters.py` (a test fails if the committed file drifts). Unit, subtype and faction keys are in the game's DB tables `main_units_tables`, `agent_subtypes_tables` and `factions_tables` (export them from `db.pack` with RPFM; `*.tsv` at the repo root is gitignored).
 

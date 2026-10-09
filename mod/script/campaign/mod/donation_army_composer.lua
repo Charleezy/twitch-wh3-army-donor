@@ -66,7 +66,7 @@ local function unique(unit, role)
 	return NO_DUPLICATES[role] or unit:find("_ror") ~= nil
 end
 
--- units of a role within [lo, hi]; an empty pool widens the range once by one tier each way
+-- units of a role within [lo, hi]; an empty pool widens the range once by one tier each way, then down to tier 1
 -- (an upper bound of 2 never widens, so easy armies stay low-tier). Units that may not repeat and are
 -- already used are left out.
 local function pool(roster, settings, role, used)
@@ -86,6 +86,9 @@ local function pool(roster, settings, role, used)
 	local list = collect(lo, hi)
 	if #list == 0 then
 		list = collect(math.max(lo - 1, 1), hi == 2 and 2 or math.min(hi + 1, 5))
+	end
+	if #list == 0 and lo > 1 then
+		list = collect(1, hi) -- last resort: lower the floor so small rosters still fill the army
 	end
 	return list
 end

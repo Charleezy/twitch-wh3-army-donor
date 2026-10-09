@@ -18,6 +18,8 @@ donation_army_config = {
 		{ name = "Warband", min_usd = 5, difficulty = "easy" },
 		{ name = "Horde", min_usd = 20, difficulty = "medium" },
 		{ name = "Doomstack", min_usd = 50, difficulty = "hard" },
+		-- min_turn (optional): the tier is not available (not even through turn_tier_bonus) before that campaign turn
+		{ name = "Apocalypse", min_usd = 100, difficulty = "apocalypse", min_turn = 30 },
 	},
 	-- army generation per difficulty: unit tiers (1-5), army size incl. lord and heroes, unit xp ranks,
 	-- lord level, and per-role {min, max} counts (infantry min/max is the core; other roles only use max)
@@ -44,6 +46,15 @@ donation_army_config = {
 			tiers = { 1, 5 }, min_units = 17, max_units = 20, unit_xp = { 5, 7 }, lord_level = { 15, 20 },
 			limits = {
 				hero = { 0, 2 }, melee_infantry = { 4, 6 }, missile_infantry = { 2, 4 },
+				melee_cavalry = { 0, 2 }, missile_cavalry = { 0, 2 }, monstrous_infantry = { 0, 2 },
+				monstrous_cavalry = { 0, 2 }, war_beast = { 0, 2 },
+				chariot = { 0, 1 }, warmachine = { 0, 1 }, monster = { 0, 1 }, generic = { 0, 1 },
+			},
+		},
+		apocalypse = {
+			tiers = { 3, 5 }, min_units = 19, max_units = 20, unit_xp = { 7, 9 }, lord_level = { 25, 30 },
+			limits = {
+				hero = { 1, 2 }, melee_infantry = { 4, 6 }, missile_infantry = { 2, 4 },
 				melee_cavalry = { 0, 2 }, missile_cavalry = { 0, 2 }, monstrous_infantry = { 0, 2 },
 				monstrous_cavalry = { 0, 2 }, war_beast = { 0, 2 },
 				chariot = { 0, 1 }, warmachine = { 0, 1 }, monster = { 0, 1 }, generic = { 0, 1 },

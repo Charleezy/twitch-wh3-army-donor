@@ -48,7 +48,7 @@ def compose(game, race, difficulty, seed):
     game.run(RNG + CHECK + f'army = c.compose(R["{race}"], D["{difficulty}"], seeded_rng({seed}), c.weights_for("{race}")); f = facts(R["{race}"], army)')
 
 
-@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard"])
+@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard", "apocalypse"])
 def test_size_within_range_and_army_cap(game, difficulty):
     for seed in range(1, 40):
         compose(game, "chs", difficulty, seed)
@@ -58,7 +58,7 @@ def test_size_within_range_and_army_cap(game, difficulty):
         assert game.eval("f.unknown") == 0
 
 
-@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard"])
+@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard", "apocalypse"])
 def test_hero_counts_per_difficulty(game, difficulty):
     counts = set()
     for seed in range(1, 60):
@@ -220,3 +220,32 @@ def test_heroes_come_from_distinct_types(game):
         end
     """)
     assert game.eval("#types") == 0
+
+
+def test_apocalypse_fills_19_to_20_for_every_race(game):
+    game.run(RNG + CHECK + """
+        failures = {}
+        for race, roster in pairs(R) do
+            for seed = 1, 10 do
+                local ok, army = pcall(c.compose, roster, D.apocalypse, seeded_rng(seed), c.weights_for(race))
+                if not ok then
+                    table.insert(failures, race .. ": " .. tostring(army))
+                else
+                    local total = #army.units + 1 + #army.heroes
+                    if total < 19 or total > 20 then table.insert(failures, race .. ": size " .. total) end
+                    if #roster.heroes > 0 and (#army.heroes < 1 or #army.heroes > 2) then
+                        table.insert(failures, race .. ": heroes " .. #army.heroes)
+                    end
+                end
+            end
+        end
+    """)
+    assert list(game.eval("failures").values()) == []
+
+
+def test_tier_floor_drops_when_high_tiers_are_empty(game):
+    game.run(RNG + """
+        roster = { faction = "x", lords = { { "lord" } }, heroes = {}, units = { [1] = { melee_infantry = { "a", "b", "c" } } } }
+        army = c.compose(roster, D.apocalypse, seeded_rng(3))
+    """)
+    assert game.eval("#army.units + 1") >= 19

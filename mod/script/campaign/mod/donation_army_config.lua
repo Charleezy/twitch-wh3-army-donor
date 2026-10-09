@@ -3,11 +3,14 @@
 -- A tier faction must exist in the campaign (e.g. the Chaos `_qb1` factions). Immortal Empires has no
 -- `*_rebels` faction for Chaos and no generic `rebels`; spawning into a missing faction silently does nothing.
 -- An army holds at most 19 units besides its general.
+-- Armies are spawned as CA invasions that hunt the player. xp_ranks is passed to the invasion manager's add_unit_experience.
 
 donation_army_config = {
 	queue_file = "donation_army_queue.txt", -- relative to the WH3 install folder
 	poll_interval_ms = 3000,
 	spawn_distance = 5,
+	-- effect bundle applied to every spawned army for its lifetime (no regionless attrition, no upkeep); "" disables
+	army_effect_bundle = "wh2_dlc16_bundle_military_upkeep_free_force_immune_to_regionless_attrition",
 	tiers = {
 		{
 			name = "Warband",

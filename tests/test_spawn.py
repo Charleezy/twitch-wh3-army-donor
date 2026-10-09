@@ -75,20 +75,88 @@ def test_find_position_none_when_no_valid_spot(game):
     assert game.eval("#fake.spawn_queries") == 2
 
 
-def test_spawn_creates_named_force_and_declares_war(game):
+def test_spawn_creates_hunting_invasion_named_after_donor(game):
+    game.run(TIERS + """
+        donation_army_config.army_effect_bundle = "attrition_bundle"
+        make_faction("invader")
+        player = make_faction("player", { leader = make_character(1), capital = "capital_region" })
+        ok = donation_army_spawn.spawn({ id = "a-1!", donor = "Bob", amount = 25 }, tiers[2], player, 5)
+        inv = fake.invasions[1]
+    """)
+    assert game.eval("ok") is True
+    assert game.eval("#fake.invasions") == 1
+    assert game.eval("inv.key") == "donation_army_a_1_"
+    assert game.eval("inv.faction") == "invader"
+    assert game.eval("inv.units") == "u3"
+    assert game.eval("inv.spawn.x") == 100 and game.eval("inv.spawn.y") == 200
+    assert game.eval("inv.general_subtype") == "wh_main_chs_lord"
+    assert game.eval("inv.xp") == 3
+    assert game.eval("inv.start.declare_war") is True
+    assert game.eval("inv.start.invade") is False
+    assert game.eval("inv.start.show") is False
+    assert game.eval("fake.renames[inv.cqi]") == "Bob"
+
+
+def test_target_is_leader_character_when_present(game):
+    game.run(TIERS + """
+        make_faction("invader")
+        player = make_faction("player", { leader = make_character(1), capital = "capital_region" })
+        donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
+        t = fake.invasions[1].target
+    """)
+    assert game.eval("t.type") == "CHARACTER"
+    assert game.eval("t.value") == 1
+    assert game.eval("t.faction") == "player"
+
+
+def test_target_is_strongest_army_when_leader_unavailable(game):
+    game.run(TIERS + """
+        make_faction("invader")
+        player = make_faction("player", {
+            leader = make_character(1, { wounded = true }),
+            forces = { make_force(make_character(7), 9) },
+            capital = "capital_region",
+        })
+        donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
+        t = fake.invasions[1].target
+    """)
+    assert game.eval("t.type") == "CHARACTER"
+    assert game.eval("t.value") == 7
+
+
+def test_target_is_capital_region_when_only_capital(game):
+    game.run(TIERS + """
+        make_faction("invader")
+        player = make_faction("player", { capital = "capital_region" })
+        donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
+        t = fake.invasions[1].target
+    """)
+    assert game.eval("t.type") == "REGION"
+    assert game.eval("t.value") == "capital_region"
+    assert game.eval("t.faction") == "player"
+
+
+def test_effect_bundle_applied_permanently(game):
     game.run(TIERS + """
         make_faction("invader")
         player = make_faction("player", { leader = make_character(1) })
-        ok = donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
-        s = fake.spawns[1]
+        donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
+        effects = fake.invasions[1].effects
     """)
-    assert game.eval("ok") is True
-    assert game.eval("s.faction") == "invader"
-    assert game.eval("s.units") == "u3"
-    assert game.eval("s.subtype") == "wh_main_chs_lord"
-    assert game.eval("fake.renames[s.cqi]") == "Bob"
-    assert game.eval('fake.xp["character_cqi:" .. s.cqi]') == 3
-    assert game.eval('fake.wars["invader|player"]') is True
+    assert game.eval("#effects") == 1
+    assert game.eval("effects[1].bundle") == game.eval("donation_army_config.army_effect_bundle")
+    assert game.eval("effects[1].bundle") != ""
+    assert game.eval("effects[1].turns") == -1
+
+
+def test_effect_bundle_omitted_when_empty(game):
+    game.run(TIERS + """
+        donation_army_config.army_effect_bundle = ""
+        make_faction("invader")
+        player = make_faction("player", { leader = make_character(1) })
+        donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
+    """)
+    assert game.eval("#fake.invasions[1].effects") == 0
 
 
 def test_spawn_returns_false_without_position(game):
@@ -98,13 +166,13 @@ def test_spawn_returns_false_without_position(game):
         ok = donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 5 }, tiers[1], player, 5)
     """)
     assert game.eval("ok") is False
-    assert game.eval("#fake.spawns") == 0
+    assert game.eval("#fake.invasions") == 0
 
 
 def test_spawn_error_is_logged_and_entry_done(game):
     game.run(TIERS + """
         donation_army = { log = function(msg) out(msg) end }
-        cm.create_force_with_general = function() error("bad unit key") end
+        invasion_manager.new_invasion = function() error("bad unit key") end
         player = make_faction("player", { leader = make_character(1) })
         ok = donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 5 }, tiers[1], player, 5)
     """)
@@ -118,4 +186,30 @@ def test_spawn_skips_xp_when_zero(game):
         player = make_faction("player", { leader = make_character(1) })
         donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 5 }, tiers[1], player, 5)
     """)
-    assert game.eval("next(fake.xp)") is None
+    assert game.eval("#fake.invasions") == 1
+    assert game.eval("fake.invasions[1].xp") is None
+
+
+def test_duplicate_invasion_key_is_logged_and_entry_done(game):
+    game.run(TIERS + """
+        donation_army = { log = function(msg) out(msg) end }
+        make_faction("invader")
+        player = make_faction("player", { leader = make_character(1) })
+        entry = { id = "a1", donor = "Bob", amount = 25 }
+        first = donation_army_spawn.spawn(entry, tiers[2], player, 5)
+        second = donation_army_spawn.spawn(entry, tiers[2], player, 5)
+    """)
+    assert game.eval("first") is True and game.eval("second") is True
+    assert game.eval("#fake.invasions") == 1
+    assert any("a1" in line and "invasion" in line for line in game.log)
+
+
+def test_unknown_faction_is_logged_and_entry_done(game):
+    game.run(TIERS + """
+        donation_army = { log = function(msg) out(msg) end }
+        player = make_faction("player", { leader = make_character(1) })
+        ok = donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
+    """)
+    assert game.eval("ok") is True
+    assert game.eval("#fake.invasions") == 0
+    assert any("a1" in line and "invasion" in line for line in game.log)

@@ -54,6 +54,7 @@ function sp.anchors(faction)
 end
 
 -- spawn-spot lookups use the player's own faction key: they return -1,-1 for factions absent from the campaign
+-- returns x, y and the anchor that produced them
 function sp.find_position(faction, distance)
 	local faction_key = faction:name()
 	for _, anchor in ipairs(sp.anchors(faction)) do
@@ -64,39 +65,46 @@ function sp.find_position(faction, distance)
 			x, y = cm:find_valid_spawn_location_for_character_from_settlement(faction_key, anchor.region_key, false, true, distance)
 		end
 		if x and y and x >= 0 and y >= 0 then
-			return x, y
+			return x, y, anchor
 		end
 	end
 end
 
-function sp.on_spawned(cqi, entry, tier, player_key)
-	local general = cm:get_character_by_cqi(cqi)
-	if general then
-		cm:change_character_custom_name(general, entry.donor, "", "", "")
-	end
-	if (tier.xp_ranks or 0) > 0 then
-		cm:add_experience_to_units_commanded_by_character(cm:char_lookup_str(cqi), tier.xp_ranks)
-	end
-	local spawned, player = cm:get_faction(tier.faction), cm:get_faction(player_key)
-	if spawned and player and not spawned:at_war_with(player) then
-		cm:force_declare_war(tier.faction, player_key, false, false)
-	end
-	log("spawned " .. tier.name .. " for " .. entry.donor .. " (" .. entry.id .. ")")
-end
-
+-- armies are CA invasions: they hunt their target and (with the effect bundle) take no attrition
 function sp.spawn(entry, tier, faction, distance)
-	local x, y = sp.find_position(faction, distance)
+	local x, y, anchor = sp.find_position(faction, distance)
 	if not x then
 		return false
 	end
-	-- region only seeds the general's home; same choice as PJ's Console
-	local region_key = cm:model():world():region_manager():region_list():item_at(0):name()
 	local player_key = faction:name()
 	-- a bad key in the config must not break the turn; log it and treat the entry as handled
 	local ok, err = pcall(function()
-		cm:create_force_with_general(tier.faction, table.concat(tier.units, ","), region_key, x, y,
-			"general", tier.subtype, "", "", "", "", false,
-			function(cqi) sp.on_spawned(cqi, entry, tier, player_key) end)
+		local key = "donation_army_" .. tostring(entry.id):gsub("[^%w_]", "_")
+		local invasion = invasion_manager:new_invasion(key, tier.faction, table.concat(tier.units, ","), { x = x, y = y })
+		if not invasion then
+			log("invasion not created for " .. entry.id .. " (duplicate key or tier '" .. tier.name .. "' faction missing)")
+			return
+		end
+		if anchor.character then
+			invasion:set_target("CHARACTER", anchor.character:command_queue_index(), player_key)
+		else
+			invasion:set_target("REGION", anchor.region_key, player_key)
+		end
+		invasion:create_general(false, tier.subtype)
+		local bundle = donation_army_config and donation_army_config.army_effect_bundle
+		if type(bundle) == "string" and bundle ~= "" then
+			invasion:apply_effect(bundle, -1)
+		end
+		if (tier.xp_ranks or 0) > 0 then
+			invasion:add_unit_experience(tier.xp_ranks)
+		end
+		invasion:start_invasion(function(started)
+			local general = cm:get_character_by_cqi(started:get_general():command_queue_index())
+			if general then
+				cm:change_character_custom_name(general, entry.donor, "", "", "")
+			end
+			log("spawned " .. tier.name .. " for " .. entry.donor .. " (" .. entry.id .. ")")
+		end, true, false, false)
 	end)
 	if not ok then
 		log("spawn failed for " .. entry.id .. " (check tier '" .. tier.name .. "' keys): " .. tostring(err))

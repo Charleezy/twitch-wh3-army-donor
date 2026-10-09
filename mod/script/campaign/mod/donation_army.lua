@@ -26,7 +26,7 @@ local function read_entries()
 end
 
 local function pick_tier(entry)
-	return donation_army_spawn.pick_tier(donation_army_config.tiers, entry.amount)
+	return donation_army_spawn.pick_tier(donation_army_config.tiers, entry.amount, cm:model():turn_number(), donation_army_config.turn_tier_bonus)
 end
 
 local warning_count = 0

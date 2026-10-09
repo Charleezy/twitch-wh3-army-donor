@@ -17,13 +17,14 @@ Edit `mod/script/campaign/mod/donation_army_config.lua`, then rebuild with `buil
 | `poll_interval_ms` | How often the mod checks the queue file (default 10000, i.e. 10 seconds). |
 | `spawn_distance` | Spawn distance from the anchor (default 5). |
 | `army_effect_bundle` | Effect bundle applied to every spawned army for its lifetime (default `wh2_dlc16_bundle_military_upkeep_free_force_immune_to_regionless_attrition`, which removes upkeep and regionless attrition). Set to `""` to disable. |
+| `turn_tier_bonus` | List of `{ turn, tiers }`. From that turn on, every donation spawns that many tiers higher (tiers ordered by `min_usd`), capped at the top tier; the entry with the highest `turn` reached applies. Donations below the lowest tier are still ignored. Default `{ turn = 5, tiers = 1 }, { turn = 30, tiers = 2 }`; set to `{}` to disable. |
 | `tiers` | List of tiers. The tier with the highest `min_usd` that a donation meets wins. |
 
-Each tier has: `name`, `min_usd`, `faction`, `subtype` (the general), `xp_ranks` (passed to the invasion manager's `add_unit_experience`), and `units` (at most 19 besides the general). Valid keys are in the game's DB tables `main_units_tables` (units), `agent_subtypes_tables` (subtypes) and `factions_tables` (factions). Open `db.pack` in RPFM and export them as TSV; dropping them at the repo root keeps them out of git (`*.tsv` is gitignored).
+Each tier has: `name`, `min_usd`, `faction`, `subtype` (the general: one key, or a list of keys from which one is picked at random for each spawn), `xp_ranks` (passed to the invasion manager's `add_unit_experience`), and `units` (at most 19 besides the general). Valid keys are in the game's DB tables `main_units_tables` (units), `agent_subtypes_tables` (subtypes) and `factions_tables` (factions). Open `db.pack` in RPFM and export them as TSV; dropping them at the repo root keeps them out of git (`*.tsv` is gitignored).
 
 A tier's `faction` must exist in the campaign (Immortal Empires has no Chaos `*_rebels` faction and no generic `rebels`); the mod logs any tier whose faction is missing at startup.
 
-Default tiers, all Chaos (`wh_main_chs_chaos_qb1`): $5 Warband, $20 Horde, $50 Doomstack.
+Default tiers, all Chaos (`wh_main_chs_chaos_qb1`): $5 Warband, $20 Horde, $50 Doomstack. Each army is led by a random generic Chaos lord or sorcerer lord (legendary lords excluded). From turn 5 donations spawn one tier higher ($5 gives a Horde, $20 a Doomstack) and from turn 30 two tiers higher (capped at Doomstack).
 
 ## Streamer setup
 

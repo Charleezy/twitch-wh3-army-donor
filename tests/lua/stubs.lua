@@ -17,6 +17,8 @@ fake = {
 	valid_spawn = { x = 100, y = 200 }, -- set to false to make every spawn query fail
 	local_faction = "player",
 	next_cqi = 1000,
+	turn = 1,
+	random_pick = nil, -- value returned by cm:random_number; nil returns min
 }
 listeners = {}
 
@@ -92,11 +94,15 @@ end
 function cm:find_valid_spawn_location_for_character_from_settlement(faction_key, region_key, b1, b2, distance)
 	return spawn_query(faction_key, region_key, distance)
 end
+function cm:random_number(max, min)
+	min = min or 1
+	return fake.random_pick or min
+end
 function cm:model()
 	local region = { name = function() return "first_region" end }
 	local region_manager = { region_list = function() return make_list({ region }) end }
 	local world = { region_manager = function() return region_manager end }
-	return { world = function() return world end }
+	return { world = function() return world end, turn_number = function() return fake.turn end }
 end
 function cm:change_character_custom_name(character, forename) fake.renames[character:command_queue_index()] = forename end
 

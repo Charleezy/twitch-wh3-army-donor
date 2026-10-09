@@ -213,3 +213,57 @@ def test_unknown_faction_is_logged_and_entry_done(game):
     assert game.eval("ok") is True
     assert game.eval("#fake.invasions") == 0
     assert any("a1" in line and "invasion" in line for line in game.log)
+
+
+SCALE = """
+bonus = { { turn = 5, tiers = 1 }, { turn = 30, tiers = 2 } }
+three = {
+	{ name = "Doomstack", min_usd = 50 }, { name = "Warband", min_usd = 5 }, { name = "Horde", min_usd = 20 },
+}
+"""
+
+
+def pick(game, amount, turn):
+    game.run(SCALE)
+    return game.eval(f"(donation_army_spawn.pick_tier(three, {amount}, {turn}, bonus) or {{}}).name")
+
+
+def test_no_bonus_before_turn_5(game):
+    assert pick(game, 5, 4) == "Warband"
+    assert pick(game, 20, 1) == "Horde"
+
+
+def test_plus_one_from_turn_5(game):
+    assert pick(game, 5, 5) == "Horde"
+    assert pick(game, 20, 29) == "Doomstack"
+
+
+def test_plus_two_from_turn_30(game):
+    assert pick(game, 5, 30) == "Doomstack"
+
+
+def test_bonus_capped_at_top_tier(game):
+    assert pick(game, 20, 30) == "Doomstack"
+    assert pick(game, 500, 99) == "Doomstack"
+
+
+def test_below_lowest_still_ignored_with_bonus(game):
+    assert pick(game, 4.99, 30) is None
+
+
+def test_unsorted_bonus_entries_and_no_bonus_args(game):
+    game.run(SCALE + "bonus = { bonus[2], bonus[1] }")
+    assert game.eval("donation_army_spawn.pick_tier(three, 5, 6, bonus).name") == "Horde"
+    assert game.eval("donation_army_spawn.pick_tier(three, 5).name") == "Warband"
+    assert game.eval("donation_army_spawn.pick_tier(three, 5, 30, {}).name") == "Warband"
+
+
+def test_subtype_string_passes_through(game):
+    assert game.eval('donation_army_spawn.pick_subtype("wh_main_chs_lord")') == "wh_main_chs_lord"
+
+
+def test_subtype_list_uses_random_pick(game):
+    game.run("fake.random_pick = 2")
+    assert game.eval('donation_army_spawn.pick_subtype({ "a", "b", "c" })') == "b"
+    game.run("fake.random_pick = nil")
+    assert game.eval('donation_army_spawn.pick_subtype({ "a", "b", "c" })') == "a"

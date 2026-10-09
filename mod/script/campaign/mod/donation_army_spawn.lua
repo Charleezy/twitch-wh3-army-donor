@@ -10,7 +10,8 @@ local function log(msg)
 	end
 end
 
-function sp.pick_tier(tiers, amount)
+-- base tier: the highest min_usd the amount meets (nil if below the lowest tier; a bonus never rescues it)
+function sp.base_tier(tiers, amount)
 	local best
 	for _, tier in ipairs(tiers) do
 		if amount >= tier.min_usd and (not best or tier.min_usd > best.min_usd) then
@@ -18,6 +19,49 @@ function sp.pick_tier(tiers, amount)
 		end
 	end
 	return best
+end
+
+-- extra tiers from turn_tier_bonus: the entry with the highest `turn` <= the current turn
+function sp.tier_bonus(turn, turn_tier_bonus)
+	local best_turn, bonus = -1, 0
+	for _, entry in ipairs(turn_tier_bonus or {}) do
+		if turn and turn >= entry.turn and entry.turn > best_turn then
+			best_turn, bonus = entry.turn, entry.tiers
+		end
+	end
+	return bonus
+end
+
+-- base tier moved up by the turn bonus (tiers ordered by min_usd), capped at the top tier.
+-- turn and turn_tier_bonus are optional: without them this is the plain base tier.
+function sp.pick_tier(tiers, amount, turn, turn_tier_bonus)
+	local base = sp.base_tier(tiers, amount)
+	if not base then
+		return nil
+	end
+	local bonus = sp.tier_bonus(turn, turn_tier_bonus)
+	if bonus <= 0 then
+		return base
+	end
+	local sorted = {}
+	for _, tier in ipairs(tiers) do
+		table.insert(sorted, tier)
+	end
+	table.sort(sorted, function(a, b) return a.min_usd < b.min_usd end)
+	for i, tier in ipairs(sorted) do
+		if tier == base then
+			return sorted[math.min(i + bonus, #sorted)]
+		end
+	end
+	return base
+end
+
+-- subtype may be a single key or a list; a list gets one random pick (random_number is inclusive: max, min)
+function sp.pick_subtype(subtype)
+	if type(subtype) == "table" then
+		return subtype[cm:random_number(#subtype, 1)]
+	end
+	return subtype
 end
 
 -- most units wins, general rank breaks ties; garrisons are skipped
@@ -90,7 +134,7 @@ function sp.spawn(entry, tier, faction, distance)
 		else
 			invasion:set_target("REGION", anchor.region_key, player_key)
 		end
-		invasion:create_general(false, tier.subtype)
+		invasion:create_general(false, sp.pick_subtype(tier.subtype))
 		local bundle = donation_army_config and donation_army_config.army_effect_bundle
 		if type(bundle) == "string" and bundle ~= "" then
 			invasion:apply_effect(bundle, -1)

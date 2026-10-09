@@ -26,6 +26,8 @@ enemy army near them. Requested by a streamer who currently has no donation serv
 | 9 | Spawn timing | **Start of the player's next turn, with a warning when the donation arrives** | Avoids mid-battle/mid-menu weirdness; warning (in-game event message naming donor + tier) builds anticipation on stream. Removes the need for real-time timers in the mod — the queue file can be read on turn start, and polled only for the warning. |
 
 | 10 | Caps | **No cap** — every queued donation spawns at next turn start | 20 × $5 = 20 armies, by design. |
+| 11 | Turn scaling (2026-10-09) | **Tier bonus by campaign turn**: from turn 5 donations spawn 1 tier higher, from turn 30 2 tiers higher, capped at the top tier (`turn_tier_bonus`); below-lowest donations still ignored | The streamer is a top multiplayer player, so a $20 army is trivial late in the campaign; scaling keeps donations threatening. The bonus uses the turn current when the donation is polled / spawned. |
+| 12 | Random lord (2026-10-09) | **Tier `subtype` may be a list**; one generic Chaos lord / sorcerer lord is picked at random per spawn (legendary lords excluded) | The streamer is a top multiplayer player; sorcerer lords add magic, making armies more varied and dangerous. |
 
 ## Reference data (RPFM TSV exports, kept locally at the repo root, gitignored — CA game data is not committed)
 - `main_units_tables.tsv` — unit keys for army unit lists.

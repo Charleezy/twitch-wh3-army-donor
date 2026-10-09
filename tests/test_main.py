@@ -109,3 +109,23 @@ def test_install_logs_missing_tier_factions(game):
     missing = [line for line in game.log if "does not exist in this campaign" in line]
     assert len(missing) == 1
     assert "Horde" in missing[0] and "no_such_faction" in missing[0]
+
+
+def test_warning_names_scaled_tier(game):
+    setup(game)
+    game.first_tick()
+    game.queue("a1\tBob\t5.00")
+    game.run("fake.turn = 5")
+    game.poll()
+    assert "Horde" in game.eval("fake.popups[1]")
+
+
+def test_spawn_uses_scaled_tier_and_random_lord(game):
+    setup(game)
+    game.first_tick()
+    game.queue("a1\tBob\t5.00")
+    game.run("fake.turn = 5; fake.random_pick = 3")
+    game.player_turn_start()
+    assert game.eval("#fake.invasions") == 1
+    assert game.eval("fake.invasions[1].units") == game.eval('table.concat(donation_army_config.tiers[2].units, ",")')
+    assert game.eval("fake.invasions[1].general_subtype") == game.eval("donation_army_config.tiers[2].subtype[3]")

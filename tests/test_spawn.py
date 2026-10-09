@@ -8,8 +8,8 @@ donation_army_rosters = {
 	inv = {
 		faction = "invader",
 		units = { [1] = { melee_infantry = { "u3" } } },
-		lords = { "lord_a" },
-		heroes = { { agent_type = "champion", agent_subtype = "hero_a" }, { agent_type = "wizard", agent_subtype = "hero_b" } },
+		lords = { { "lord_a" } },
+		heroes = { { { agent_type = "champion", agent_subtype = "hero_a" } }, { { agent_type = "wizard", agent_subtype = "hero_b" } } },
 	},
 }
 donation_army_config.races = nil
@@ -282,7 +282,7 @@ def test_allowed_races_filters_config_and_missing_factions(game):
 
 
 OTHER = """
-donation_army_rosters.other = { faction = "other_faction", units = { [1] = { melee_infantry = { "o1" } } }, lords = { "lord_o" }, heroes = {} }
+donation_army_rosters.other = { faction = "other_faction", units = { [1] = { melee_infantry = { "o1" } } }, lords = { { "lord_o" } }, heroes = {} }
 make_faction("invader"); make_faction("other_faction")
 player = make_faction("player", { leader = make_character(1) })
 """
@@ -364,3 +364,18 @@ def test_unsorted_bonus_entries_and_no_bonus_args(game):
     assert game.eval("donation_army_spawn.pick_tier(three, 5, 6, bonus).name") == "Horde"
     assert game.eval("donation_army_spawn.pick_tier(three, 5).name") == "Warband"
     assert game.eval("donation_army_spawn.pick_tier(three, 5, 30, {}).name") == "Warband"
+
+
+def test_min_turn_gates_apocalypse_with_real_config(game):
+    def real(amount, turn):
+        return game.eval(
+            f"donation_army_spawn.pick_tier(donation_army_config.tiers, {amount}, {turn}, donation_army_config.turn_tier_bonus).name"
+        )
+
+    assert real(100, 29) == "Doomstack"
+    assert real(100, 30) == "Apocalypse"
+    assert real(50, 10) == "Doomstack"
+    assert real(20, 30) == "Apocalypse"
+    assert real(50, 30) == "Apocalypse"
+    assert real(5, 30) == "Doomstack"
+    assert real(20, 29) == "Doomstack"

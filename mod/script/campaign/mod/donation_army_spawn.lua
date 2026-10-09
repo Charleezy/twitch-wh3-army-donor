@@ -35,6 +35,14 @@ end
 -- base tier moved up by the turn bonus (tiers ordered by min_usd), capped at the top tier.
 -- turn and turn_tier_bonus are optional: without them this is the plain base tier.
 function sp.pick_tier(tiers, amount, turn, turn_tier_bonus)
+	-- tiers with a min_turn in the future do not exist yet: neither the base pick nor the bonus cap can reach them
+	local available = {}
+	for _, tier in ipairs(tiers) do
+		if (tier.min_turn or 0) <= (turn or 0) then
+			table.insert(available, tier)
+		end
+	end
+	tiers = available
 	local base = sp.base_tier(tiers, amount)
 	if not base then
 		return nil

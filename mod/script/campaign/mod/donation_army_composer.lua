@@ -66,7 +66,7 @@ local function unique(unit, role)
 	return NO_DUPLICATES[role] or unit:find("_ror") ~= nil
 end
 
--- units of a role within [lo, hi]; an empty pool widens the range once by one tier each way
+-- units of a role within [lo, hi]; an empty pool widens the range once by one tier each way, then down to tier 1
 -- (an upper bound of 2 never widens, so easy armies stay low-tier). Units that may not repeat and are
 -- already used are left out.
 local function pool(roster, settings, role, used)
@@ -87,6 +87,9 @@ local function pool(roster, settings, role, used)
 	if #list == 0 then
 		list = collect(math.max(lo - 1, 1), hi == 2 and 2 or math.min(hi + 1, 5))
 	end
+	if #list == 0 and lo > 1 then
+		list = collect(1, hi) -- last resort: lower the floor so small rosters still fill the army
+	end
 	return list
 end
 
@@ -95,16 +98,20 @@ function c.compose(roster, settings, rng, weights)
 	local limits = settings.limits or {}
 	local army = { units = {}, heroes = {} }
 
-	army.lord = roster.lords[c.roll(rng, 1, #roster.lords)]
+	-- lords: a type group first (so lore variants of one caster don't outweigh the other lord types), then a subtype
+	local lord_group = roster.lords[c.roll(rng, 1, #roster.lords)]
+	army.lord = lord_group[c.roll(rng, 1, #lord_group)]
 	army.unit_xp = c.roll(rng, range(settings.unit_xp, 0))
 	army.lord_level = c.roll(rng, range(settings.lord_level, 1))
 
 	local size = math.min(c.roll(rng, settings.min_units, settings.max_units), c.MAX_ARMY)
 	local hero_count = math.min(c.roll(rng, range(limits.hero, 0)), #roster.heroes, size - 2)
-	for i, hero in ipairs(shuffled(roster.heroes, rng)) do
+	-- heroes: shuffle the type groups and take one random hero from each, so heroes differ in type when possible
+	for i, group in ipairs(shuffled(roster.heroes, rng)) do
 		if i > hero_count then
 			break
 		end
+		local hero = group[c.roll(rng, 1, #group)]
 		table.insert(army.heroes, { agent_type = hero.agent_type, agent_subtype = hero.agent_subtype })
 	end
 	local slots = size - 1 - #army.heroes

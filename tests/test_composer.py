@@ -48,7 +48,7 @@ def compose(game, race, difficulty, seed):
     game.run(RNG + CHECK + f'army = c.compose(R["{race}"], D["{difficulty}"], seeded_rng({seed}), c.weights_for("{race}")); f = facts(R["{race}"], army)')
 
 
-@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard"])
+@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard", "apocalypse"])
 def test_size_within_range_and_army_cap(game, difficulty):
     for seed in range(1, 40):
         compose(game, "chs", difficulty, seed)
@@ -58,7 +58,7 @@ def test_size_within_range_and_army_cap(game, difficulty):
         assert game.eval("f.unknown") == 0
 
 
-@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard"])
+@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard", "apocalypse"])
 def test_hero_counts_per_difficulty(game, difficulty):
     counts = set()
     for seed in range(1, 60):
@@ -117,13 +117,13 @@ def test_xp_and_lord_level_in_range(game):
         compose(game, "skv", "medium", seed)
         assert game.eval("D.medium.unit_xp[1] <= army.unit_xp and army.unit_xp <= D.medium.unit_xp[2]")
         assert game.eval("D.medium.lord_level[1] <= army.lord_level and army.lord_level <= D.medium.lord_level[2]")
-        assert game.eval("army.lord") in list(game.eval("R.skv.lords").values())
+        assert game.eval("army.lord") in [s for g in game.eval("R.skv.lords").values() for s in g.values()]
 
 
 def test_fallback_when_role_pools_are_empty(game):
     # only melee infantry exists, only at tier 4: medium's 1-3 range widens and missile infantry falls back to melee
     game.run(RNG + """
-        roster = { faction = "x", lords = { "lord" }, heroes = {}, units = { [4] = { melee_infantry = { "a", "b" } } } }
+        roster = { faction = "x", lords = { { "lord" } }, heroes = {}, units = { [4] = { melee_infantry = { "a", "b" } } } }
         army = c.compose(roster, D.medium, seeded_rng(7))
     """)
     total = game.eval("#army.units") + 1
@@ -161,3 +161,91 @@ def test_ogre_weights_favour_monstrous_infantry(game):
     assert game.eval('donation_army_composer.weights_for("ogr").monstrous_infantry') > game.eval(
         'donation_army_composer.weights_for("chs").monstrous_infantry'
     )
+
+
+def test_easy_armies_are_6_to_8(game):
+    game.run(RNG)
+    assert game.eval("D.easy.min_units") == 6 and game.eval("D.easy.max_units") == 8
+    totals = set()
+    for race in ["chs", "emp", "grn", "nor", "nur", "lzd"]:
+        for seed in range(1, 20):
+            compose(game, race, "easy", seed)
+            totals.add(game.eval("f.total"))
+    assert totals <= {6, 7, 8} and len(totals) > 1
+
+
+def test_lord_picked_by_group_then_subtype(game):
+    # scripted rng: first roll chooses the group, second the subtype within it
+    game.run(RNG + """
+        roster = { faction = "x", units = { [1] = { melee_infantry = { "a" } } },
+            lords = { { "caster_1", "caster_2", "caster_3", "caster_4" }, { "warrior" } }, heroes = {} }
+        local function scripted(first)
+            local n = 0
+            return function(a, b)
+                n = n + 1
+                if n == 1 then return first end
+                return a
+            end
+        end
+        lord_a = c.compose(roster, D.easy, scripted(2)).lord
+        lord_b = c.compose(roster, D.easy, scripted(1)).lord
+        counts = { caster = 0, warrior = 0 }
+        local rng = seeded_rng(11)
+        for _ = 1, 400 do
+            local l = c.compose(roster, D.easy, rng).lord
+            counts[l == "warrior" and "warrior" or "caster"] = counts[l == "warrior" and "warrior" or "caster"] + 1
+        end
+    """)
+    assert game.eval("lord_a") == "warrior" and game.eval("lord_b") == "caster_1"
+    assert 150 < game.eval("counts.warrior") < 250  # about half, not 1 in 5
+
+
+def test_heroes_come_from_distinct_types(game):
+    game.run(RNG + """
+        roster = { faction = "x", units = { [1] = { melee_infantry = { "a", "b" } } }, lords = { { "l" } },
+            heroes = {
+                { { agent_type = "wizard", agent_subtype = "w1" }, { agent_type = "wizard", agent_subtype = "w2" }, { agent_type = "wizard", agent_subtype = "w3" } },
+                { { agent_type = "champion", agent_subtype = "c1" } },
+                { { agent_type = "spy", agent_subtype = "s1" } },
+            } }
+        types = {}
+        for seed = 1, 60 do
+            local army = c.compose(roster, D.hard, seeded_rng(seed))
+            local seen = {}
+            for _, h in ipairs(army.heroes) do
+                local t = h.agent_subtype:sub(1, 1)
+                if seen[t] then table.insert(types, "dup") end
+                seen[t] = true
+            end
+        end
+    """)
+    assert game.eval("#types") == 0
+
+
+def test_apocalypse_fills_19_to_20_for_every_race(game):
+    game.run(RNG + CHECK + """
+        failures = {}
+        for race, roster in pairs(R) do
+            for seed = 1, 10 do
+                local ok, army = pcall(c.compose, roster, D.apocalypse, seeded_rng(seed), c.weights_for(race))
+                if not ok then
+                    table.insert(failures, race .. ": " .. tostring(army))
+                else
+                    local total = #army.units + 1 + #army.heroes
+                    if total < 19 or total > 20 then table.insert(failures, race .. ": size " .. total) end
+                    if #roster.heroes > 0 and (#army.heroes < 1 or #army.heroes > 2) then
+                        table.insert(failures, race .. ": heroes " .. #army.heroes)
+                    end
+                end
+            end
+        end
+    """)
+    assert list(game.eval("failures").values()) == []
+
+
+def test_tier_floor_drops_when_high_tiers_are_empty(game):
+    game.run(RNG + """
+        roster = { faction = "x", lords = { { "lord" } }, heroes = {}, units = { [1] = { melee_infantry = { "a", "b", "c" } } } }
+        army = c.compose(roster, D.apocalypse, seeded_rng(3))
+    """)
+    assert game.eval("#army.units + 1") >= 19

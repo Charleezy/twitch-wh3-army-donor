@@ -7,6 +7,9 @@
 donation_army_config = {
 	queue_file = "donation_army_queue.txt", -- relative to the WH3 install folder
 	poll_interval_ms = 10000,
+	-- when a save loads, queued donations older than this many minutes are skipped (marked handled); newer ones still
+	-- spawn (crash recovery). Stops other saves and old test donations from spawning; lines without a time count as old
+	backlog_grace_minutes = 10,
 	spawn_distance = 5,
 	-- effect bundle applied to every spawned army for its lifetime (no regionless attrition, no upkeep); "" disables
 	army_effect_bundle = "wh2_dlc16_bundle_military_upkeep_free_force_immune_to_regionless_attrition",

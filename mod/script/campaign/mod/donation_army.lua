@@ -7,7 +7,15 @@ local da = donation_army
 
 local HANDLED = "donation_army_handled"
 local WARNED = "donation_army_warned"
-local INITIALIZED = "donation_army_initialized"
+
+-- current unix time in seconds, or nil if the game's Lua has no usable os.time (then every entry counts as stale)
+function da.now()
+	local ok, now = pcall(function() return os.time() end)
+	if ok and type(now) == "number" then
+		return now
+	end
+	return nil
+end
 
 function da.log(msg)
 	out("[DonationArmy] " .. msg)
@@ -126,16 +134,29 @@ function da.check_config()
 	end
 end
 
-function da.install()
-	if not cm:get_saved_value(INITIALIZED) then
+-- on every load: queue entries this save has not handled and that were queued before the grace window are skipped
+function da.skip_stale()
+	local ok, err = pcall(function()
+		local now = da.now()
+		local cutoff = now and (now - donation_army_config.backlog_grace_minutes * 60)
 		local handled = saved_set(HANDLED)
+		local skipped = 0
 		for _, entry in ipairs(read_entries()) do
-			handled[entry.id] = true
+			if not handled[entry.id] and (not cutoff or not entry.time or entry.time < cutoff) then
+				handled[entry.id] = true
+				skipped = skipped + 1
+			end
 		end
 		cm:set_saved_value(HANDLED, handled)
-		cm:set_saved_value(INITIALIZED, true)
-		da.log("new campaign: existing queue entries skipped")
+		da.log("skipped " .. skipped .. " donations queued before this save was loaded")
+	end)
+	if not ok then
+		da.log("skipping stale donations failed: " .. tostring(err))
 	end
+end
+
+function da.install()
+	da.skip_stale()
 	da.check_config()
 	core:add_listener("donation_army_turn_start", "ScriptEventPlayerFactionTurnStart", true,
 		function(context) da.spawn_pending(context:faction()) end, true)

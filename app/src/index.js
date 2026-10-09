@@ -5,7 +5,7 @@ import { toUsd } from './currency.js';
 import { parseDonations } from './donation.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { readIds, appendEntry } from './queue.js';
+import { readIds, appendEntry, nowSeconds } from './queue.js';
 
 function handle(config, seen, donation) {
   if (donation.isTest && !config.acceptTestAlerts) {
@@ -25,7 +25,7 @@ function handle(config, seen, donation) {
   }
   let added;
   try {
-    added = appendEntry(config.queuePath, { id, donor: donation.donor, amountUsd: usd }, seen);
+    added = appendEntry(config.queuePath, { id, donor: donation.donor, amountUsd: usd, time: nowSeconds() }, seen);
   } catch (err) {
     console.error(`Could not write donation ${id} (${donation.donor} $${usd.toFixed(2)}) to the queue: ${err.code || err.message}; re-add it with npm run fake -- "${donation.donor}" ${usd.toFixed(2)}`);
     return;

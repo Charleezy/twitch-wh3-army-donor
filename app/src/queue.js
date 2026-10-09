@@ -1,4 +1,4 @@
-// Queue file shared with the WH3 mod: one `id<TAB>donor<TAB>amount_usd` line per donation.
+// Queue file shared with the WH3 mod: one `id<TAB>donor<TAB>amount_usd<TAB>epoch_seconds` line per donation.
 import fs from 'node:fs';
 
 export function sanitizeDonor(name) {
@@ -6,8 +6,11 @@ export function sanitizeDonor(name) {
   return clean || 'Anonymous';
 }
 
-export function formatLine({ id, donor, amountUsd }) {
-  return `${String(id).replace(/[\t\r\n]/g, '')}\t${sanitizeDonor(donor)}\t${amountUsd.toFixed(2)}\n`;
+export const nowSeconds = () => Math.floor(Date.now() / 1000);
+
+// `time` is unix epoch seconds; the mod uses it to skip donations queued long before a save was loaded
+export function formatLine({ id, donor, amountUsd, time = nowSeconds() }) {
+  return `${String(id).replace(/[\t\r\n]/g, '')}\t${sanitizeDonor(donor)}\t${amountUsd.toFixed(2)}\t${Math.floor(time)}\n`;
 }
 
 export function readIds(path) {

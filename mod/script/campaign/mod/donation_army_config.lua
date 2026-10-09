@@ -7,7 +7,7 @@
 
 donation_army_config = {
 	queue_file = "donation_army_queue.txt", -- relative to the WH3 install folder
-	poll_interval_ms = 3000,
+	poll_interval_ms = 10000,
 	spawn_distance = 5,
 	-- effect bundle applied to every spawned army for its lifetime (no regionless attrition, no upkeep); "" disables
 	army_effect_bundle = "wh2_dlc16_bundle_military_upkeep_free_force_immune_to_regionless_attrition",

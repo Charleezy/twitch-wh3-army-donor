@@ -27,7 +27,7 @@ enemy army near them. Requested by a streamer who currently has no donation serv
 
 | 10 | Caps | **No cap** — every queued donation spawns at next turn start | 20 × $5 = 20 armies, by design. |
 
-## Reference data (repo root, RPFM TSV exports)
+## Reference data (RPFM TSV exports, kept locally at the repo root, gitignored — CA game data is not committed)
 - `main_units_tables.tsv` — unit keys for army unit lists.
 - `agent_subtypes_tables.tsv` — general subtypes.
 - `faction_tables.tsv` — faction keys, incl. per-culture `*_rebels` (e.g. `wh2_main_skv_skaven_rebels`).

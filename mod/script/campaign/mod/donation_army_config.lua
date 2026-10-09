@@ -1,5 +1,5 @@
 -- Donation Army settings. Edit tiers freely: the highest min_usd a donation meets wins.
--- Unit keys: main_units_tables.tsv, subtypes: agent_subtypes_tables.tsv, factions: faction_tables.tsv
+-- Keys come from the game DB tables main_units_tables (units), agent_subtypes_tables (subtypes), factions_tables (factions)
 -- An army holds at most 19 units besides its general.
 
 donation_army_config = {

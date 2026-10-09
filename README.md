@@ -18,7 +18,7 @@ Edit `mod/script/campaign/mod/donation_army_config.lua`, then rebuild with `buil
 | `spawn_distance` | Spawn distance from the anchor (default 5). |
 | `tiers` | List of tiers. The tier with the highest `min_usd` that a donation meets wins. |
 
-Each tier has: `name`, `min_usd`, `faction`, `subtype` (the general), `xp_ranks`, and `units` (at most 19 besides the general). Valid keys come from the TSVs at the repo root: `main_units_tables.tsv` (units), `agent_subtypes_tables.tsv` (subtypes), `faction_tables.tsv` (factions).
+Each tier has: `name`, `min_usd`, `faction`, `subtype` (the general), `xp_ranks`, and `units` (at most 19 besides the general). Valid keys are in the game's DB tables `main_units_tables` (units), `agent_subtypes_tables` (subtypes) and `factions_tables` (factions). Open `db.pack` in RPFM and export them as TSV; dropping them at the repo root keeps them out of git (`*.tsv` is gitignored).
 
 Default tiers, all Chaos rebels (`wh_main_chs_chaos_rebels`): $5 Warband, $20 Horde, $50 Doomstack.
 

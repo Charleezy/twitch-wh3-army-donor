@@ -106,6 +106,12 @@ function da.install()
 		cm:set_saved_value(INITIALIZED, true)
 		da.log("new campaign: existing queue entries skipped")
 	end
+	for _, tier in ipairs(donation_army_config.tiers) do
+		local faction = cm:get_faction(tier.faction)
+		if not faction or faction:is_null_interface() then
+			da.log("tier '" .. tier.name .. "' faction '" .. tier.faction .. "' does not exist in this campaign; its donations will not spawn")
+		end
+	end
 	core:add_listener("donation_army_turn_start", "ScriptEventPlayerFactionTurnStart", true,
 		function(context) da.spawn_pending(context:faction()) end, true)
 	cm:repeat_real_callback(da.poll, donation_army_config.poll_interval_ms, "donation_army_poll")

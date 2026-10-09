@@ -69,8 +69,8 @@ function make_faction(key, opts)
 	return f
 end
 
-local function spawn_query(from, distance)
-	table.insert(fake.spawn_queries, { from = from, distance = distance })
+local function spawn_query(faction_key, from, distance)
+	table.insert(fake.spawn_queries, { faction = faction_key, from = from, distance = distance })
 	if fake.valid_spawn then
 		return fake.valid_spawn.x, fake.valid_spawn.y
 	end
@@ -90,10 +90,10 @@ function cm:char_lookup_str(c)
 	return "character_cqi:" .. tostring(c)
 end
 function cm:find_valid_spawn_location_for_character_from_character(faction_key, lookup, b, distance)
-	return spawn_query(lookup, distance)
+	return spawn_query(faction_key, lookup, distance)
 end
 function cm:find_valid_spawn_location_for_character_from_settlement(faction_key, region_key, b1, b2, distance)
-	return spawn_query(region_key, distance)
+	return spawn_query(faction_key, region_key, distance)
 end
 function cm:model()
 	local region = { name = function() return "first_region" end }

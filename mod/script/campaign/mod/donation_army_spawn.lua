@@ -53,13 +53,15 @@ function sp.anchors(faction)
 	return list
 end
 
-function sp.find_position(faction, spawn_faction_key, distance)
+-- spawn-spot lookups use the player's own faction key: they return -1,-1 for factions absent from the campaign
+function sp.find_position(faction, distance)
+	local faction_key = faction:name()
 	for _, anchor in ipairs(sp.anchors(faction)) do
 		local x, y
 		if anchor.character then
-			x, y = cm:find_valid_spawn_location_for_character_from_character(spawn_faction_key, cm:char_lookup_str(anchor.character), true, distance)
+			x, y = cm:find_valid_spawn_location_for_character_from_character(faction_key, cm:char_lookup_str(anchor.character), true, distance)
 		else
-			x, y = cm:find_valid_spawn_location_for_character_from_settlement(spawn_faction_key, anchor.region_key, false, true, distance)
+			x, y = cm:find_valid_spawn_location_for_character_from_settlement(faction_key, anchor.region_key, false, true, distance)
 		end
 		if x and y and x >= 0 and y >= 0 then
 			return x, y
@@ -83,7 +85,7 @@ function sp.on_spawned(cqi, entry, tier, player_key)
 end
 
 function sp.spawn(entry, tier, faction, distance)
-	local x, y = sp.find_position(faction, tier.faction, distance)
+	local x, y = sp.find_position(faction, distance)
 	if not x then
 		return false
 	end

@@ -1,6 +1,6 @@
 TIERS = """
 tiers = {
-	{ name = "Warband", min_usd = 5, faction = "wh_main_chs_chaos_rebels", subtype = "wh_main_chs_lord", units = { "u1", "u2" }, xp_ranks = 0 },
+	{ name = "Warband", min_usd = 5, faction = "wh_main_chs_chaos_qb1", subtype = "wh_main_chs_lord", units = { "u1", "u2" }, xp_ranks = 0 },
 	{ name = "Horde", min_usd = 20, faction = "invader", subtype = "wh_main_chs_lord", units = { "u3" }, xp_ranks = 3 },
 }
 """
@@ -49,11 +49,21 @@ def test_wounded_leader_skipped_and_rank_breaks_ties(game):
 def test_find_position_falls_through_to_capital(game):
     game.run("""
         player = make_faction("player", { capital = "capital_region" })
-        x, y = donation_army_spawn.find_position(player, "rebels", 5)
+        x, y = donation_army_spawn.find_position(player, 5)
     """)
     assert game.eval("x") == 100
     assert game.eval("fake.spawn_queries[1].from") == "capital_region"
     assert game.eval("fake.spawn_queries[1].distance") == 5
+
+
+def test_find_position_queries_with_player_faction_key(game):
+    game.run(TIERS + """
+        make_faction("invader")
+        player = make_faction("player", { leader = make_character(1) })
+        donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 25 }, tiers[2], player, 5)
+    """)
+    assert game.eval("#fake.spawn_queries") == 1
+    assert game.eval("fake.spawn_queries[1].faction") == "player"
 
 
 def test_find_position_none_when_no_valid_spot(game):
@@ -61,7 +71,7 @@ def test_find_position_none_when_no_valid_spot(game):
         fake.valid_spawn = false
         player = make_faction("player", { leader = make_character(1), capital = "capital_region" })
     """)
-    assert game.eval("donation_army_spawn.find_position(player, 'rebels', 5)") is None
+    assert game.eval("donation_army_spawn.find_position(player, 5)") is None
     assert game.eval("#fake.spawn_queries") == 2
 
 
@@ -104,7 +114,7 @@ def test_spawn_error_is_logged_and_entry_done(game):
 
 def test_spawn_skips_xp_when_zero(game):
     game.run(TIERS + """
-        make_faction("wh_main_chs_chaos_rebels")
+        make_faction("wh_main_chs_chaos_qb1")
         player = make_faction("player", { leader = make_character(1) })
         donation_army_spawn.spawn({ id = "a1", donor = "Bob", amount = 5 }, tiers[1], player, 5)
     """)

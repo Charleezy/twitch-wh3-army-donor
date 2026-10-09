@@ -1,6 +1,6 @@
 # WH3 Donation Army Spawn
 
-A Total War: WARHAMMER III campaign mod plus a small companion app. When a viewer donates through Streamlabs, the app appends the donation to a queue file in the game folder. The mod polls that file, warns you as soon as a donation is seen, and at your next turn start spawns a hostile Chaos rebel army near you. Bigger donations spawn bigger armies; every donation that meets the lowest tier spawns (no cap).
+A Total War: WARHAMMER III campaign mod plus a small companion app. When a viewer donates through Streamlabs, the app appends the donation to a queue file in the game folder. The mod polls that file, warns you as soon as a donation is seen, and at your next turn start spawns a hostile Chaos army near you. Bigger donations spawn bigger armies; every donation that meets the lowest tier spawns (no cap).
 
 ## Install the mod
 
@@ -20,7 +20,9 @@ Edit `mod/script/campaign/mod/donation_army_config.lua`, then rebuild with `buil
 
 Each tier has: `name`, `min_usd`, `faction`, `subtype` (the general), `xp_ranks`, and `units` (at most 19 besides the general). Valid keys are in the game's DB tables `main_units_tables` (units), `agent_subtypes_tables` (subtypes) and `factions_tables` (factions). Open `db.pack` in RPFM and export them as TSV; dropping them at the repo root keeps them out of git (`*.tsv` is gitignored).
 
-Default tiers, all Chaos rebels (`wh_main_chs_chaos_rebels`): $5 Warband, $20 Horde, $50 Doomstack.
+A tier's `faction` must exist in the campaign (Immortal Empires has no Chaos `*_rebels` faction and no generic `rebels`); the mod logs any tier whose faction is missing at startup.
+
+Default tiers, all Chaos (`wh_main_chs_chaos_qb1`): $5 Warband, $20 Horde, $50 Doomstack.
 
 ## Streamer setup
 
@@ -51,7 +53,7 @@ App config keys (`app/config.local.json`):
 - `cd app && npm test`: companion app tests.
 - `cd app && npm run fake -- Bob 20`: append a fake $20 donation from Bob to the queue.
 - Streamlabs dashboard "Test Alert" with the app running (needs `acceptTestAlerts: true`).
-- In-game smoke test: copy `tools/console/smoke.lua` to the game folder as `exec.lua`, then type `e` in PJ's Console mod.
+- In-game smoke test: copy `tools/console/smoke.lua` to the game folder as `exec.lua`, then type `e` in PJ's Console mod. `tools/console/spawn_probe.lua` is the same kind of probe for spawn-spot lookups and `create_force_with_general` per faction key.
 
 ## Limits
 

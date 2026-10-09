@@ -43,7 +43,17 @@ The user has used its `spawn`, `au`, `add axp` commands successfully in WH3. Its
   `bundle:set_effect_value(effect, value)`, `bundle:set_duration(-1)`,
   `cm:apply_custom_effect_bundle_to_faction / _to_characters_force(...)`
 - `io.open` used to write files.
-Still unknown: renaming the spawned general to the donor's name (needs a rename call in the callback).
+**Invasion manager (proven in-game via `tools/console/invasion_probe.lua`):** a bare
+`create_force_with_general` army just stands there and suffers attrition. This sequence spawned a hostile army that
+marched at and attacked the player's faction leader with no attrition:
+- `inv = invasion_manager:new_invasion(key, faction, units_csv, { x, y })` (nil + script_error if the key exists or the faction is missing)
+- `inv:set_target("CHARACTER", cqi, player_key)` (also `"REGION"` region key, `"LOCATION"` `{x=,y=}`)
+- `inv:create_general(false, subtype)`
+- `inv:apply_effect("wh2_dlc16_bundle_military_upkeep_free_force_immune_to_regionless_attrition", -1)`
+- `inv:add_unit_experience(n)` (vanilla passes small ints 1-7)
+- `inv:start_invasion(function(self) ... self:get_general() ... end, true, false, false)` (declares war)
+`cm:change_character_custom_name` on that general renames it to the donor (the earlier unknown).
+Originally unknown: renaming the spawned general to the donor's name (needs a rename call in the callback).
 
 ## Sub-project B: viewer-count buff (requested later, separate)
 Buff AI/enemy unit stats based on live Twitch viewer count (streamer has ~90 Twitch viewers;
@@ -71,8 +81,10 @@ YouTube excluded as too hard to integrate). Rough target: ~90 viewers → ~+90% 
   unit list, optional XP ranks. Editable by the user.
 - Warning: short real-time poll of the queue during the player's turn; new entries → event message
   ("Bob ($20) has summoned a Warband — it arrives next turn").
-- Spawn: at player turn start, every pending entry spawns via the decision-8 fallback chain;
-  declare war on the player if needed; rename general to donor; apply XP.
+- Spawn: at player turn start, every pending entry spawns via the decision-8 fallback chain as a CA
+  invasion (`invasion_manager`): target the anchor (leader or strongest army by character, else capital
+  region), war declared by `start_invasion`, upkeep-free/attrition-immune effect bundle, XP via
+  `add_unit_experience`; rename general to donor in the start callback.
 - Picks the tier (highest `min_usd` met); below the lowest tier → marked handled, logged.
 - Handled IDs persisted in the save → no double spawns across save/load or restart. A new campaign
   marks the existing queue as handled on its first tick (no backlog spawns).

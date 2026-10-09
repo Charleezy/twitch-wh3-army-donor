@@ -8,11 +8,9 @@ fake = {
 	saved = {},
 	factions = {},
 	characters = {},
-	spawns = {},
+	invasions = {},
 	spawn_queries = {},
 	renames = {},
-	xp = {},
-	wars = {},
 	popups = {},
 	first_tick = {},
 	real_callbacks = {},
@@ -64,7 +62,6 @@ function make_faction(key, opts)
 	f.military_force_list = function() return make_list(opts.forces or {}) end
 	f.has_home_region = function() return opts.capital ~= nil end
 	f.home_region = function() return { name = function() return opts.capital end } end
-	f.at_war_with = function(_, other) return fake.wars[key .. "|" .. other:name()] == true or fake.wars[other:name() .. "|" .. key] == true end
 	fake.factions[key] = f
 	return f
 end
@@ -101,16 +98,7 @@ function cm:model()
 	local world = { region_manager = function() return region_manager end }
 	return { world = function() return world end }
 end
-function cm:create_force_with_general(faction_key, units, region_key, x, y, agent_type, subtype, f, c, fam, o, leader, callback)
-	fake.next_cqi = fake.next_cqi + 1
-	local cqi = fake.next_cqi
-	make_character(cqi)
-	table.insert(fake.spawns, { faction = faction_key, units = units, x = x, y = y, subtype = subtype, cqi = cqi })
-	callback(cqi)
-end
 function cm:change_character_custom_name(character, forename) fake.renames[character:command_queue_index()] = forename end
-function cm:add_experience_to_units_commanded_by_character(lookup, ranks) fake.xp[lookup] = ranks end
-function cm:force_declare_war(a, b) fake.wars[a .. "|" .. b] = true end
 
 core = {}
 function core:add_listener(name, event, condition, callback)
@@ -125,4 +113,30 @@ function fire_event(event, context)
 			listener.callback(context)
 		end
 	end
+end
+
+-- records every invasion; new_invasion returns nil for a duplicate key or an unknown faction
+invasion_manager = {}
+function invasion_manager:new_invasion(key, faction_key, units, spawn)
+	if fake.invasion_keys and fake.invasion_keys[key] or not cm:get_faction(faction_key) then
+		script_error("invasion_manager: cannot create invasion " .. tostring(key))
+		return nil
+	end
+	fake.invasion_keys = fake.invasion_keys or {}
+	fake.invasion_keys[key] = true
+	local rec = { key = key, faction = faction_key, units = units, spawn = spawn, effects = {} }
+	table.insert(fake.invasions, rec)
+	local inv = {}
+	function inv:set_target(type, value, faction) rec.target = { type = type, value = value, faction = faction } end
+	function inv:create_general(a, subtype) rec.general_subtype = subtype end
+	function inv:apply_effect(bundle, turns) table.insert(rec.effects, { bundle = bundle, turns = turns }) end
+	function inv:add_unit_experience(amount) rec.xp = amount end
+	function inv:start_invasion(callback, declare_war, invade, show)
+		rec.start = { declare_war = declare_war, invade = invade, show = show }
+		fake.next_cqi = fake.next_cqi + 1
+		rec.cqi = fake.next_cqi
+		local general = make_character(rec.cqi)
+		callback({ get_general = function() return general end })
+	end
+	return inv
 end

@@ -1,6 +1,6 @@
 # WH3 Donation Army Spawn
 
-A Total War: WARHAMMER III campaign mod plus a small companion app. When a viewer donates through Streamlabs, the app appends the donation to a queue file in the game folder. The mod polls that file, warns you as soon as a donation is seen, and at your next turn start spawns a hostile Chaos army near you. Bigger donations spawn bigger armies; every donation that meets the lowest tier spawns (no cap).
+A Total War: WARHAMMER III campaign mod plus a small companion app. When a viewer donates through Streamlabs, the app appends the donation to a queue file in the game folder. The mod polls that file, warns you as soon as a donation is seen, and at your next turn start spawns a hostile Chaos army near you. Armies are spawned as CA invasions (the game's `invasion_manager`): they march at and attack your faction leader (or your strongest army, or your capital if neither is available), are upkeep-free and immune to regionless attrition. Bigger donations spawn bigger armies; every donation that meets the lowest tier spawns (no cap).
 
 ## Install the mod
 
@@ -16,9 +16,10 @@ Edit `mod/script/campaign/mod/donation_army_config.lua`, then rebuild with `buil
 | `queue_file` | Queue file name, relative to the WH3 install folder (default `donation_army_queue.txt`). Must match the app's `queuePath`. |
 | `poll_interval_ms` | How often the mod checks the queue file (default 3000). |
 | `spawn_distance` | Spawn distance from the anchor (default 5). |
+| `army_effect_bundle` | Effect bundle applied to every spawned army for its lifetime (default `wh2_dlc16_bundle_military_upkeep_free_force_immune_to_regionless_attrition`, which removes upkeep and regionless attrition). Set to `""` to disable. |
 | `tiers` | List of tiers. The tier with the highest `min_usd` that a donation meets wins. |
 
-Each tier has: `name`, `min_usd`, `faction`, `subtype` (the general), `xp_ranks`, and `units` (at most 19 besides the general). Valid keys are in the game's DB tables `main_units_tables` (units), `agent_subtypes_tables` (subtypes) and `factions_tables` (factions). Open `db.pack` in RPFM and export them as TSV; dropping them at the repo root keeps them out of git (`*.tsv` is gitignored).
+Each tier has: `name`, `min_usd`, `faction`, `subtype` (the general), `xp_ranks` (passed to the invasion manager's `add_unit_experience`), and `units` (at most 19 besides the general). Valid keys are in the game's DB tables `main_units_tables` (units), `agent_subtypes_tables` (subtypes) and `factions_tables` (factions). Open `db.pack` in RPFM and export them as TSV; dropping them at the repo root keeps them out of git (`*.tsv` is gitignored).
 
 A tier's `faction` must exist in the campaign (Immortal Empires has no Chaos `*_rebels` faction and no generic `rebels`); the mod logs any tier whose faction is missing at startup.
 
@@ -53,7 +54,7 @@ App config keys (`app/config.local.json`):
 - `cd app && npm test`: companion app tests.
 - `cd app && npm run fake -- Bob 20`: append a fake $20 donation from Bob to the queue.
 - Streamlabs dashboard "Test Alert" with the app running (needs `acceptTestAlerts: true`).
-- In-game smoke test: copy `tools/console/smoke.lua` to the game folder as `exec.lua`, then type `e` in PJ's Console mod. `tools/console/spawn_probe.lua` is the same kind of probe for spawn-spot lookups and `create_force_with_general` per faction key.
+- In-game smoke test: copy `tools/console/smoke.lua` to the game folder as `exec.lua`, then type `e` in PJ's Console mod. `tools/console/spawn_probe.lua` is the same kind of probe for spawn-spot lookups and `create_force_with_general` per faction key. `tools/console/invasion_probe.lua` spawns an invasion-manager army that hunts your faction leader, the same sequence the mod uses.
 
 ## Limits
 

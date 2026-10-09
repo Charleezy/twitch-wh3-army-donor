@@ -15,7 +15,7 @@ donation_army_config = {
 	-- races an army may be rolled from (keys of donation_army_rosters, e.g. { "chs", "skv", "emp" }); nil = all
 	races = nil,
 	tiers = {
-		{ name = "Warband", min_usd = 5, difficulty = "easy" },
+		{ name = "Warband", min_usd = 0, difficulty = "easy" }, -- any donation spawns at least a Warband
 		{ name = "Horde", min_usd = 20, difficulty = "medium" },
 		{ name = "Doomstack", min_usd = 50, difficulty = "hard" },
 		-- min_turn (optional): the tier is not available (not even through turn_tier_bonus) before that campaign turn

@@ -22,7 +22,7 @@ Edit `mod/script/campaign/mod/donation_army_config.lua`, then rebuild with `buil
 | `races` | Races an army may be rolled from, as roster keys (e.g. `{ "chs", "skv", "emp" }`). `nil` (default) allows every race in `donation_army_rosters.lua`. |
 | `difficulties` | Army generation settings per difficulty (see below). |
 
-Default tiers: $5 Warband (`easy`), $20 Horde (`medium`), $50 Doomstack (`hard`), $100 Apocalypse (`apocalypse`, only from turn 30; before that $100 or more gives a Doomstack). From turn 5 donations spawn one tier higher ($5 gives a Horde, $20 a Doomstack) and from turn 30 two tiers higher, capped at the top available tier (Doomstack before turn 30, Apocalypse from turn 30: $20 and $50 then give an Apocalypse, $5 a Doomstack).
+Default tiers: Warband for any donation under $20 (`easy`, `min_usd = 0`), $20 Horde (`medium`), $50 Doomstack (`hard`), $100 Apocalypse (`apocalypse`, only from turn 30; before that $100 or more gives a Doomstack). From turn 5 donations spawn one tier higher ($5 gives a Horde, $20 a Doomstack) and from turn 30 two tiers higher, capped at the top available tier (Doomstack before turn 30, Apocalypse from turn 30: $20 and $50 then give an Apocalypse, $5 a Doomstack).
 
 ### How armies are generated
 

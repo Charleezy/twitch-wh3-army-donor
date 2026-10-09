@@ -50,6 +50,7 @@ def test_each_entry_spawns_once(game):
 
 def test_below_lowest_tier_is_ignored(game):
     setup(game)
+    game.run("donation_army_config.tiers[1].min_usd = 5")  # default Warband has no floor
     game.first_tick()
     game.queue("a1\tCheap\t1.00")
     game.poll()

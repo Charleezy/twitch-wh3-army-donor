@@ -4,6 +4,8 @@ Usage: python tools/gen_rosters.py [output_path]
 
 Keeps only origin == "vanilla" units, lords and heroes; maps each race shorthand to the
 quest-battle (_qb1) faction proven to exist in Immortal Empires; drops races with no lords or no infantry.
+Drops special units by name (EXCLUDED_NAME_PATTERNS) and, when the RPFM exports main_units_tables.tsv /
+agent_subtypes_tables.tsv are at the repo root, any unit/lord/hero key missing from them.
 Each unit's gold cost (multiplayer_cost, else recruitment_cost; the highest if the data lists it twice) goes in
 the race's `costs` map, used by the composer's per-difficulty min_unit_cost.
 """
@@ -92,11 +94,57 @@ ROLE_OVERRIDES = {
 }
 
 
+# Unit keys that are not normal roster units, dropped from every race regardless of the game tables. Each pattern is
+# searched in the key. Monster Hunt bosses, Dwarf grudge variants, Steam Tank drivers and quest-battle copies are
+# special-purpose entries that must not be recruited into a donation army.
+EXCLUDED_NAME_PATTERNS = [
+    re.compile(r"_boss(_|$)"),   # Monster Hunt / quest bosses, e.g. wh_dlc08_vmp_mon_terrorgheist_boss
+    re.compile(r"_grudge_unit"),  # Dwarf grudge-quest variants
+    re.compile(r"_driver"),       # Steam Tank crew entries
+    re.compile(r"_qb(_|\d*$)"),   # quest-battle copies, e.g. *_qb, *_qb_1
+]
+MAIN_UNITS_TSV = ROOT / "main_units_tables.tsv"
+AGENT_SUBTYPES_TSV = ROOT / "agent_subtypes_tables.tsv"
+
+
+def name_excluded(key):
+    return any(p.search(key) for p in EXCLUDED_NAME_PATTERNS)
+
+
+def read_tsv_keys(path, column):
+    """Key set from one column of an RPFM TSV export (line 1 headers, line 2 metadata, then rows)."""
+    with open(path, encoding="utf-8") as f:
+        header = f.readline().rstrip("\r\n").split("\t")
+        f.readline()
+        idx = header.index(column)
+        rows = (line.rstrip("\r\n").split("\t") for line in f)
+        return {parts[idx] for parts in rows if len(parts) > idx and parts[idx]}
+
+
 def unit_cost(entry):
     return int(entry["multiplayer_cost"] or entry["recruitment_cost"] or 0)
 
 
-def build(data):
+def build(data, valid_units=None, valid_subtypes=None, dropped=None):
+    """valid_units / valid_subtypes: key sets from the game tables (None = skip that check).
+    dropped: optional dict collecting {(race, reason): set of keys} for reporting."""
+    dropped = {} if dropped is None else dropped
+
+    def keep_unit(race, key):
+        if name_excluded(key):
+            dropped.setdefault((race, "name filter"), set()).add(key)
+            return False
+        if valid_units is not None and key not in valid_units:
+            dropped.setdefault((race, "not in main_units_tables"), set()).add(key)
+            return False
+        return True
+
+    def keep_subtype(race, key):
+        if valid_subtypes is not None and key not in valid_subtypes:
+            dropped.setdefault((race, "not in agent_subtypes_tables"), set()).add(key)
+            return False
+        return True
+
     rosters = {}
     for race in sorted(data.keys()):
         if race not in FACTIONS:
@@ -108,14 +156,17 @@ def build(data):
             by_role = {}
             for role in ROLES:
                 for e in vanilla(src["units"][tier_name][role]):
+                    if not keep_unit(race, e["land_unit"]):
+                        continue
                     costs[e["land_unit"]] = max(costs.get(e["land_unit"], 0), unit_cost(e))
                     by_role.setdefault(ROLE_OVERRIDES.get(e["land_unit"], role), set()).add(e["land_unit"])
             roles = {role: sorted(by_role[role]) for role in ROLES if by_role.get(role)}
             if roles:
                 units[tier] = roles
-        lords = group_by_type(sorted({e["agent_subtype"] for e in vanilla(src["allowed_lords"])}), lambda s: s)
+        lords = group_by_type(sorted({e["agent_subtype"] for e in vanilla(src["allowed_lords"]) if keep_subtype(race, e["agent_subtype"])}), lambda s: s)
         heroes = group_by_type(
-            sorted({(e["agent_type"], e["agent_subtype"]) for e in vanilla(src["allowed_heroes"])}), lambda h: h[1]
+            sorted({(e["agent_type"], e["agent_subtype"]) for e in vanilla(src["allowed_heroes"])
+                    if keep_subtype(race, e["agent_subtype"])}), lambda h: h[1]
         )
         has_infantry = any(r in roles for roles in units.values() for r in ("melee_infantry", "missile_infantry"))
         if lords and has_infantry:
@@ -161,10 +212,28 @@ def render(rosters):
     return "".join(out)
 
 
-def generate(data_path=DATA):
+def report(dropped):
+    for (race, reason), keys in sorted(dropped.items()):
+        print(f"dropped {len(keys)} ({reason}) from {race}: {', '.join(sorted(keys))}")
+
+
+def generate(data_path=DATA, verbose=True):
     lua = LuaRuntime(unpack_returned_tuples=True)
     data = lua.execute(pathlib.Path(data_path).read_text(encoding="utf-8"))
-    return render(build(data))
+    valid_units = valid_subtypes = None
+    if MAIN_UNITS_TSV.exists():
+        valid_units = read_tsv_keys(MAIN_UNITS_TSV, "unit")
+    elif verbose:
+        print(f"WARNING: {MAIN_UNITS_TSV.name} not found at repo root; skipping unit key validation")
+    if AGENT_SUBTYPES_TSV.exists():
+        valid_subtypes = read_tsv_keys(AGENT_SUBTYPES_TSV, "key")
+    elif verbose:
+        print(f"WARNING: {AGENT_SUBTYPES_TSV.name} not found at repo root; skipping lord/hero validation")
+    dropped = {}
+    result = render(build(data, valid_units, valid_subtypes, dropped))
+    if verbose:
+        report(dropped)
+    return result
 
 
 def main(argv=None):

@@ -132,3 +132,26 @@ def test_vampire_counts_keeps_monsters_and_no_boss_terrorgheist():
     keys = {k for r, k in roster_unit_keys(rosters) if r == "vmp"}
     assert "wh_dlc08_vmp_mon_terrorgheist_boss" not in keys
     assert any(role == "monster" for tier in rosters["vmp"].units.values() for role in tier.keys())
+
+
+def test_renown_units_are_flagged_in_rosters():
+    tsv = ROOT / "main_units_tables.tsv"
+    if not tsv.exists():
+        pytest.skip("main_units_tables.tsv (gitignored RPFM export) absent")
+    _, rosters = load_rosters(COMMITTED.read_text(encoding="utf-8"))
+    assert rosters["vmp"].renown["wh_dlc04_vmp_inf_sternsmen_0"] is True
+    assert rosters["cst"].renown["wh2_dlc11_cst_art_queen_bess"] is True
+    flagged = load_generator().read_tsv_true_keys(tsv, "unit", "is_renown")
+    for race, key in roster_unit_keys(rosters):
+        assert (key in flagged or "_ror" in key) == (rosters[race].renown[key] is True), (race, key)
+
+
+def test_renown_falls_back_to_name_rule_without_the_table():
+    gen = load_generator()
+    data = {"vmp": {"units": {"tier_1": {r: {} for r in gen.ROLES}}, "allowed_lords": {}, "allowed_heroes": {}}}
+    entry = lambda k: {"origin": "vanilla", "land_unit": k, "multiplayer_cost": 1, "recruitment_cost": 1}
+    data["vmp"]["units"]["tier_1"]["melee_infantry"] = {1: entry("wh_x_vmp_inf_plain"), 2: entry("wh_x_vmp_inf_thing_ror_0")}
+    data["vmp"]["allowed_lords"] = {1: {"origin": "vanilla", "agent_subtype": "lord"}}
+    roster = gen.build(data)["vmp"]
+    assert roster["renown"] == ["wh_x_vmp_inf_thing_ror_0"]
+    assert gen.build(data, renown_units={"wh_x_vmp_inf_plain"})["vmp"]["renown"] == ["wh_x_vmp_inf_plain", "wh_x_vmp_inf_thing_ror_0"]

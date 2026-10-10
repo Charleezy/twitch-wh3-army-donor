@@ -21,7 +21,7 @@ c.WEIGHTS = {
 }
 c.RACE_WEIGHTS = { ogr = { monstrous_infantry = 80 } }
 
--- roles whose units (and any *_ror* unit) never appear twice in one army
+-- roles whose units (and any Regiment of Renown, flagged in the roster) never appear twice in one army
 local NO_DUPLICATES = { warmachine = true, monster = true }
 -- roles that may fill past their cap when no other role has eligible units
 local OVERFLOW = { melee_infantry = true, missile_infantry = true, monstrous_infantry = true }
@@ -63,8 +63,8 @@ local function shuffled(list, rng)
 	return out
 end
 
-local function unique(unit, role)
-	return NO_DUPLICATES[role] or unit:find("_ror") ~= nil
+local function unique(roster, unit, role)
+	return NO_DUPLICATES[role] or (roster.renown or {})[unit] == true
 end
 
 -- the unit's gold cost from the roster's costs map (generated rosters always have one; unknown units cost 0)
@@ -81,7 +81,7 @@ local function pool(roster, limits, role, used)
 		local list, seen = {}, {}
 		for tier = a, b do
 			for _, unit in ipairs((roster.units[tier] or {})[role] or {}) do
-				if not seen[unit] and c.cost(roster, unit) >= min_cost and not (used[unit] and unique(unit, role)) then
+				if not seen[unit] and c.cost(roster, unit) >= min_cost and not (used[unit] and unique(roster, unit, role)) then
 					seen[unit] = true
 					table.insert(list, unit)
 				end
@@ -138,7 +138,7 @@ function c.compose(roster, settings, rng, weights)
 			return 0
 		end
 		local unit = list[c.roll(rng, 1, #list)]
-		if unique(unit, role) then
+		if unique(roster, unit, role) then
 			copies = 1
 		end
 		copies = math.min(copies, slots - #army.units)
@@ -210,7 +210,7 @@ function c.compose(roster, settings, rng, weights)
 			end
 			-- occasionally take several copies of one unit, as Land Encounters does (at most 3, within the cap)
 			local copies = 1
-			if not unique("", role) and c.roll(rng, 1, 4) == 1 then
+			if not unique(roster, "", role) and c.roll(rng, 1, 4) == 1 then
 				copies = math.min(3, math.max(1, cap(role) - (counts[role] or 0)))
 				copies = c.roll(rng, 1, copies)
 			end

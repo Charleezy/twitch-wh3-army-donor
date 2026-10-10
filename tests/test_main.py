@@ -80,10 +80,10 @@ def test_running_save_is_unaffected_after_first_tick(game):
 def test_warning_then_spawn_next_turn(game):
     setup(game)
     game.first_tick()
-    game.queue("a1\tBob\t20.00")
+    game.queue("a1\tBob\t5.00")
     game.poll()
     assert game.eval("#fake.popups") == 1
-    assert "Bob ($20.00) has summoned a Horde" in game.eval("fake.popups[1]")
+    assert "Bob ($5.00) has summoned a Horde" in game.eval("fake.popups[1]")
     assert game.eval("#fake.invasions") == 0
     game.player_turn_start()
     assert game.eval("#fake.invasions") == 1
@@ -192,7 +192,7 @@ def test_install_logs_unknown_tier_difficulty(game):
 def test_warning_names_scaled_tier(game):
     setup(game)
     game.first_tick()
-    game.queue("a1\tBob\t5.00")
+    game.queue("a1\tBob\t1.00")
     game.run("fake.turn = 5")
     game.poll()
     assert "Horde" in game.eval("fake.popups[1]")
@@ -201,12 +201,12 @@ def test_warning_names_scaled_tier(game):
 def test_spawn_uses_scaled_tier_difficulty_and_rolled_race(game):
     setup(game)
     game.first_tick()
-    game.queue("a1	Bob	5.00")
+    game.queue("a1	Bob	1.00")
     game.run("fake.turn = 5")
     game.player_turn_start()
     assert game.eval("#fake.invasions") == 1
     inv = "fake.invasions[1]"
-    # only the Chaos faction exists in this fake campaign, so chs is rolled; $5 at turn 5 is a Horde (medium)
+    # only the Chaos faction exists in this fake campaign, so chs is rolled; $1 at turn 5 is a Horde (medium)
     assert game.eval(f"{inv}.faction") == "wh_main_chs_chaos_qb1"
     chs_lords = [s for group in game.eval("donation_army_rosters.chs.lords").values() for s in group.values()]
     assert game.eval(f"{inv}.general_subtype") in chs_lords

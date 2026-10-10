@@ -27,19 +27,19 @@ Edit `mod/script/campaign/mod/donation_army_config.lua`, then rebuild with `buil
 
 | Tier | Donation | Difficulty | Unit tiers | Min unit cost | Army size (incl. lord) | Unit xp | Lord level | Heroes | Available |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Warband | any amount under $20 | `easy` | 1-2 | none | 6-8 | 1-3 | 5-10 | none | always |
-| Horde | $20+ | `medium` | 1-3 | none | 14-16 | 3-5 | 10-15 | 0-1 | always |
-| Doomstack | $50+ | `hard` | 1-5 | 500 | 17-20 | 5-7 | 15-20 | 0-2 | always |
-| Apocalypse | $100+ | `apocalypse` | 3-5 | 750 | 19-20 | 7-9 | 25-30 | 1-2 | from turn 30 |
+| Warband | any amount under $5 | `easy` | 1-2 | none | 6-8 | 1-3 | 5-10 | none | always |
+| Horde | $5+ | `medium` | 1-3 | none | 14-16 | 3-5 | 10-15 | 0-1 | always |
+| Doomstack | $20+ | `hard` | 1-5 | 500 | 17-20 | 5-7 | 15-20 | 0-2 | always |
+| Apocalypse | $50+ | `apocalypse` | 3-5 | 750 | 19-20 | 7-9 | 25-30 | 1-2 | from turn 30 |
 
 What a donation spawns, by campaign turn (`turn_tier_bonus`: +1 tier from turn 5, +2 from turn 30, capped at the highest tier available that turn):
 
 | Donation | Turns 1-4 | Turns 5-29 | Turn 30+ |
 | --- | --- | --- | --- |
-| under $20 | Warband | Horde | Doomstack |
-| $20-49 | Horde | Doomstack | Apocalypse |
-| $50-99 | Doomstack | Doomstack | Apocalypse |
-| $100+ | Doomstack | Doomstack | Apocalypse |
+| under $5 | Warband | Horde | Doomstack |
+| $5-19.99 | Horde | Doomstack | Apocalypse |
+| $20-49.99 | Doomstack | Doomstack | Apocalypse |
+| $50+ | Doomstack | Doomstack | Apocalypse |
 
 The warning popup names the tier for the turn the donation arrives; the spawn re-checks the tier on the turn it spawns, so a donation seen on turn 4 can arrive a tier bigger on turn 5.
 

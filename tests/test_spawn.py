@@ -388,10 +388,17 @@ def test_min_turn_gates_apocalypse_with_real_config(game):
             f"donation_army_spawn.pick_tier(donation_army_config.tiers, {amount}, {turn}, donation_army_config.turn_tier_bonus).name"
         )
 
-    assert real(100, 29) == "Doomstack"
-    assert real(100, 30) == "Apocalypse"
-    assert real(50, 10) == "Doomstack"
-    assert real(20, 30) == "Apocalypse"
-    assert real(50, 30) == "Apocalypse"
-    assert real(5, 30) == "Doomstack"
-    assert real(20, 29) == "Doomstack"
+    expected = {  # amount -> (turns 1-4, turns 5-29, turn 30+)
+        0: ("Warband", "Horde", "Doomstack"),
+        4.99: ("Warband", "Horde", "Doomstack"),
+        5: ("Horde", "Doomstack", "Apocalypse"),
+        19.99: ("Horde", "Doomstack", "Apocalypse"),
+        20: ("Doomstack", "Doomstack", "Apocalypse"),
+        49.99: ("Doomstack", "Doomstack", "Apocalypse"),
+        50: ("Doomstack", "Doomstack", "Apocalypse"),
+        500: ("Doomstack", "Doomstack", "Apocalypse"),
+    }
+    for amount, (early, mid, late) in expected.items():
+        assert (real(amount, 1), real(amount, 4)) == (early, early), amount
+        assert (real(amount, 5), real(amount, 29)) == (mid, mid), amount
+        assert (real(amount, 30), real(amount, 99)) == (late, late), amount

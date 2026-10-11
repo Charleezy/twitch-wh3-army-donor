@@ -15,7 +15,7 @@ export function parseDonations(event) {
     donor: m.name || m.from || 'Anonymous',
     amount: source === 'youtube_superchat' ? Number(m.amount) / 1_000_000 : Number(m.amount),
     currency: m.currency || 'USD',
-    isTest: m.isTest === true,
+    isTest: m.isTest === true || m.isPreview === true, // Alert Box editor previews arrive with isTest false, isPreview true
     source,
   }));
 }

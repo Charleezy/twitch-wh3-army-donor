@@ -3,6 +3,7 @@ import io from 'socket.io-client';
 import { loadConfig } from './config.js';
 import { toUsd } from './currency.js';
 import { parseDonations } from './donation.js';
+import { shouldLogRawEvent } from './rawlog.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { readIds, appendEntry, nowSeconds } from './queue.js';
@@ -47,6 +48,6 @@ socket.on('connect_error', (err) => console.error(`Connection error: ${err.messa
 socket.on('error', (err) => console.error(`Socket error: ${err && err.message ? err.message : err}`));
 socket.on('disconnect', (reason) => console.warn(`Disconnected (${reason}). Donations sent while disconnected are lost.`));
 socket.on('event', (event) => {
-  if (config.logRawEvents) console.log(JSON.stringify(event));
+  if (config.logRawEvents && shouldLogRawEvent(event)) console.log(JSON.stringify(event));
   for (const donation of parseDonations(event)) handle(config, seen, donation);
 });

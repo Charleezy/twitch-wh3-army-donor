@@ -34,7 +34,7 @@ function facts(roster, army)
 			f.roles[role] = (f.roles[role] or 0) + 1
 			f.min_tier = math.min(f.min_tier, tier)
 			f.max_tier = math.max(f.max_tier, tier)
-			if seen[u] and (role == "warmachine" or role == "monster" or u:find("_ror")) then f.dup = true end
+			if seen[u] and (role == "warmachine" or role == "monster" or (roster.renown or {})[u]) then f.dup = true end
 		end
 		seen[u] = true
 	end
@@ -111,6 +111,98 @@ def test_no_duplicate_warmachine_monster_or_ror(game):
         for seed in range(1, 25):
             compose(game, race, "hard", seed)
             assert game.eval("f.dup") is False, (race, seed)
+
+
+@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard", "apocalypse"])
+def test_vampire_counts_never_repeat_a_renown_unit(game, difficulty):
+    game.run(RNG + """
+        function max_renown_copies(roster, army)
+            local n, worst = {}, 0
+            for _, u in ipairs(army.units) do
+                n[u] = (n[u] or 0) + 1
+                if roster.renown[u] then worst = math.max(worst, n[u]) end
+            end
+            return worst, n["wh_dlc04_vmp_inf_sternsmen_0"] or 0
+        end
+    """)
+    for seed in range(1, 150):
+        game.run(f'worst, sterns = max_renown_copies(R.vmp, c.compose(R.vmp, D.{difficulty}, seeded_rng({seed}), c.weights_for("vmp")))')
+        assert game.eval("worst") <= 1 and game.eval("sterns") <= 1, (difficulty, seed)
+
+
+@pytest.mark.parametrize("difficulty", ["easy", "medium", "hard", "apocalypse"])
+def test_no_race_repeats_a_renown_unit(game, difficulty):
+    game.run(RNG + f"""
+        bad = {{}}
+        for race, roster in pairs(R) do
+            for seed = 1, 25 do
+                local army = c.compose(roster, D.{difficulty}, seeded_rng(seed), c.weights_for(race))
+                local n = {{}}
+                for _, u in ipairs(army.units) do
+                    n[u] = (n[u] or 0) + 1
+                    if roster.renown[u] and n[u] > 1 then table.insert(bad, race .. "/" .. u .. "/" .. seed) end
+                end
+            end
+        end
+    """)
+    assert list(game.eval("bad").values()) == []
+
+
+def test_renown_only_infantry_pool_still_fills_the_army(game):
+    game.run(RNG + CHECK + """
+        roster = { faction = "x", lords = { { "lord" } }, heroes = {},
+            units = { [3] = { melee_infantry = { "r1", "r2" }, missile_infantry = { "r3" } } },
+            costs = { r1 = 100, r2 = 100, r3 = 100 }, renown = { r1 = true, r2 = true, r3 = true } }
+        sizes = {}
+        for seed = 1, 20 do
+            local army = c.compose(roster, D.medium, seeded_rng(seed))
+            local seen = {}
+            for _, u in ipairs(army.units) do assert(not seen[u], "repeated " .. u); seen[u] = true end
+            sizes[seed] = #army.units
+        end
+    """)
+    assert all(n >= 1 for n in game.eval("sizes").values())  # too few units to fill the army: terminates, no repeats
+
+
+def test_renown_only_infantry_pool_fills_a_full_size_army(game):
+    game.run(RNG + """
+        local melee, missile, costs, renown = {}, {}, {}, {}
+        for i = 1, 20 do
+            melee[i], missile[i] = "m" .. i, "s" .. i
+            costs[melee[i]], costs[missile[i]] = 100, 100
+            renown[melee[i]], renown[missile[i]] = true, true
+        end
+        roster = { faction = "x", lords = { { "lord" } }, heroes = {},
+            units = { [3] = { melee_infantry = melee, missile_infantry = missile } }, costs = costs, renown = renown }
+        bad = {}
+        for seed = 1, 20 do
+            local army = c.compose(roster, D.apocalypse, seeded_rng(seed))
+            local total, seen = #army.units + 1 + #army.heroes, {}
+            if total < D.apocalypse.min_units or total > D.apocalypse.max_units then table.insert(bad, "size " .. total) end
+            for _, u in ipairs(army.units) do
+                if seen[u] then table.insert(bad, "repeat " .. u) end
+                seen[u] = true
+            end
+        end
+    """)
+    assert list(game.eval("bad").values()) == []
+
+
+def test_renown_flag_is_what_makes_a_unit_unique(game):
+    # no "_ror" in the keys: only the roster's renown flag decides
+    game.run(RNG + """
+        roster = { faction = "x", lords = { { "lord" } }, heroes = {},
+            units = { [1] = { melee_infantry = { "plain", "old_regiment" } } },
+            costs = {}, renown = { old_regiment = true } }
+        copies = 0
+        for seed = 1, 40 do
+            local army = c.compose(roster, D.hard, seeded_rng(seed))
+            local n = 0
+            for _, u in ipairs(army.units) do if u == "old_regiment" then n = n + 1 end end
+            copies = math.max(copies, n)
+        end
+    """)
+    assert game.eval("copies") == 1
 
 
 def test_xp_and_lord_level_in_range(game):

@@ -1,6 +1,6 @@
 # WH3 Donation Army Spawn
 
-A Total War: WARHAMMER III campaign mod plus a small companion app. When a viewer donates through Streamlabs, the app appends the donation to a queue file in the game folder. The mod polls that file, warns you as soon as a donation is seen, and at your next turn start spawns a hostile army of a random race, with a random lord and possibly heroes, near you. Armies are spawned as CA invasions (the game's `invasion_manager`): they march at and attack your faction leader (or your strongest army, or your capital if neither is available), are upkeep-free and immune to regionless attrition. Bigger donations spawn bigger, higher-tier, more experienced armies; every donation that meets the lowest tier spawns (no cap).
+A Total War: WARHAMMER III campaign mod plus a small companion app. When a viewer donates through Streamlabs (a tip, or a YouTube Super Chat), the app appends the donation to a queue file in the game folder. The mod polls that file, warns you as soon as a donation is seen, and at your next turn start spawns a hostile army of a random race, with a random lord and possibly heroes, near you. Armies are spawned as CA invasions (the game's `invasion_manager`): they march at and attack your faction leader (or your strongest army, or your capital if neither is available), are upkeep-free and immune to regionless attrition. Bigger donations spawn bigger, higher-tier, more experienced armies; every donation that meets the lowest tier spawns (no cap).
 
 ## Install the mod
 
@@ -67,6 +67,8 @@ Army rosters and composition rules adapted from Land Encounters and Points of In
 
 ## Streamer setup
 
+The app handles Streamlabs tips and YouTube Super Chats (delivered through Streamlabs, so a YouTube account must be linked to your Streamlabs account). Twitch Bits and subscriptions are not handled. Super Chat amounts arrive in millionths of the currency unit (converted per Streamlabs' documented example: `"2000000"` = $2.00); this is not yet verified live, so confirm it with one real or test Super Chat with `logRawEvents` on and check the "Queued ... via YouTube Super Chat" amount.
+
 Get your Streamlabs socket token: in the Streamlabs dashboard go to **Settings → API Settings → API Tokens** ([streamlabs.com/dashboard#/settings/api-settings](https://streamlabs.com/dashboard#/settings/api-settings)) and copy **Your Socket API Token**, the second, longer token (a few hundred characters, starts with `eyJ`). Not "Your API Access Token" above it: that short one makes the app fail with `Socket error: Authentication error`. Treat it like a password; it only goes in `app/config.local.json`, which is gitignored.
 
 ![Streamlabs API Tokens page: use "Your Socket API Token"](docs/images/streamlabs-guide.png)
@@ -88,7 +90,7 @@ App config keys (`app/config.local.json`):
 | `queuePath` | Full path to the queue file; must be in the WH3 install folder (where `Warhammer3.exe` is). In JSON, Windows paths need doubled backslashes (`C:\\Games\\...`) or forward slashes. |
 | `currencyRates` | Map of currency code to USD rate, used to convert non-USD donations. Unknown currencies are treated as USD. |
 | `acceptTestAlerts` | If true, Streamlabs test alerts are queued too (each gets a unique id). Set to `false` for live streams, or dashboard test alerts will spawn armies. |
-| `logRawEvents` | If true, prints every raw Streamlabs event (may include donor messages). |
+| `logRawEvents` | If true, prints every raw Streamlabs event (use it to check Super Chat amounts; may include donor messages). |
 
 ## Testing
 

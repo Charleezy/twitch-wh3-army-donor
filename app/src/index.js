@@ -30,7 +30,8 @@ function handle(config, seen, donation) {
     console.error(`Could not write donation ${id} (${donation.donor} $${usd.toFixed(2)}) to the queue: ${err.code || err.message}; re-add it with npm run fake -- "${donation.donor}" ${usd.toFixed(2)}`);
     return;
   }
-  console.log(added ? `Queued ${donation.donor} $${usd.toFixed(2)} (${id})` : `Duplicate ${id} ignored`);
+  const via = donation.source === 'youtube_superchat' ? 'YouTube Super Chat' : 'Streamlabs';
+  console.log(added ? `Queued ${donation.donor} $${usd.toFixed(2)} via ${via} (${id})` : `Duplicate ${id} ignored`);
 }
 
 const config = loadConfig();

@@ -67,7 +67,7 @@ Army rosters and composition rules adapted from Land Encounters and Points of In
 
 ## Streamer setup
 
-The app handles Streamlabs tips and YouTube Super Chats (delivered through Streamlabs, so a YouTube account must be linked to your Streamlabs account). Twitch Bits and subscriptions are not handled. Super Chat amounts arrive in millionths of the currency unit (converted per Streamlabs' documented example: `"2000000"` = $2.00); this is not yet verified live, so confirm it with one real or test Super Chat with `logRawEvents` on and check the "Queued ... via YouTube Super Chat" amount.
+The app handles Streamlabs tips and YouTube Super Chats (delivered through Streamlabs, so a YouTube account must be linked to your Streamlabs account). Twitch Bits and subscriptions are not handled. Super Chat amounts arrive in millionths of the currency unit (`94000000` = $94.00; confirmed with a Streamlabs test Super Chat on 2026-10-11). To send a test one: Streamlabs dashboard, Alert Box, YouTube, Super Chats, then Test.
 
 Get your Streamlabs socket token: in the Streamlabs dashboard go to **Settings → API Settings → API Tokens** ([streamlabs.com/dashboard#/settings/api-settings](https://streamlabs.com/dashboard#/settings/api-settings)) and copy **Your Socket API Token**, the second, longer token (a few hundred characters, starts with `eyJ`). Not "Your API Access Token" above it: that short one makes the app fail with `Socket error: Authentication error`. Treat it like a password; it only goes in `app/config.local.json`, which is gitignored. Linking or merging another platform (e.g. YouTube) in Streamlabs issues a new Socket API Token; an outdated token still prints "Connected to Streamlabs" but receives nothing, so re-copy the token if no events arrive.
 

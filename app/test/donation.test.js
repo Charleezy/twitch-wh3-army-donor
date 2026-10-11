@@ -81,3 +81,20 @@ test('still ignores bits and subscriptions', () => {
   assert.deepEqual(parseDonations({ type: 'subscription', for: 'twitch_account', message: [{ name: 'x' }] }), []);
   assert.deepEqual(parseDonations({ type: 'subscription', for: 'youtube_account', message: [{ name: 'x' }] }), []);
 });
+
+test('Alert Box editor previews (isPreview) are flagged as test alerts', () => {
+  const tip = { type: 'donation', message: [{ _id: 'p1', name: 'Kevin', amount: '5', isTest: false, isPreview: true }] };
+  assert.equal(parseDonations(tip)[0].isTest, true);
+  const sc = { type: 'superchat', for: 'youtube_account', message: [{ _id: 'p2', name: 'Kevin', amount: '2000000', isTest: false, isPreview: true }] };
+  assert.equal(parseDonations(sc)[0].isTest, true);
+});
+
+test('normal events with isPreview false stay real', () => {
+  const tip = { type: 'donation', message: [{ _id: 'r1', name: 'Bob', amount: '5', isTest: false, isPreview: false }] };
+  assert.equal(parseDonations(tip)[0].isTest, false);
+});
+
+test('non-array message (e.g. alertPlaying object) is ignored', () => {
+  assert.deepEqual(parseDonations({ type: 'alertPlaying', message: { type: 'donation' } }), []);
+  assert.deepEqual(parseDonations({ type: 'donation', message: { amount: 5 } }), []);
+});

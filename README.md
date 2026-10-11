@@ -105,3 +105,14 @@ App config keys (`app/config.local.json`):
 - Queue lines without a timestamp (written by an older app version) count as old and are skipped on load.
 - The mod reads the clock with `os.time()`; if the game does not provide it, every unhandled donation is skipped on load. The streamer's PC clock must be roughly right, since the app stamps each line.
 - The queue file lives in the game folder and is shared by all saves. Each line is `id<TAB>donor<TAB>amount_usd<TAB>epoch_seconds` (the last field is unix time in seconds, written by the app).
+
+## TODO / ideas
+
+Not built. Listed so they are easy to pick up later; details and the game calls behind them are in `docs/superpowers/specs/2026-10-08-donation-army-spawn-design.md`.
+
+- **Themed armies.** A chance for a spawn to ignore the normal composition rules and field one or two unit types only (e.g. 19 mammoths with a lord on a mammoth), instead of an infantry core plus mixed roles. Needs a source of themes so they don't have to be curated by hand: look for an existing mod with themed army templates to borrow from (the Spire Hammer mod has a 19-unit Regiment of Renown mammoth stack).
+- **Harder Apocalypse.** Deliberately left on the easy side for now. Levers, roughly by impact: spawn a second army alongside the first; research all technologies for the spawning faction (`cm:instantly_research_all_technologies`); rank 9 units and a level 40-50 lord; CA's endgame ward-save bundle.
+- **Items and traits for lords and heroes.** `cm:force_add_ancillary(character, item_key, true, true)` equips an item immediately; `cm:force_add_trait` adds a trait. Land Encounters has per-race item sets that could be reused.
+- **Boss chance.** A small chance for an Apocalypse army to include a Monster Hunt boss unit of its race (only boss keys that exist in CA's unit table).
+- **Twitch Bits, subs and YouTube memberships.** Streamlabs sends these on the same socket; the app ignores them today.
+- **Friendly armies and a viewer-count buff** (enemy stats scaled by live viewer count), from the original request.
